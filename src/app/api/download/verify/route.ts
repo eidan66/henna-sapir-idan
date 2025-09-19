@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Access code stored server-side for security
-const ACCESS_CODE = "KANO18082025";
+const ACCESS_CODE = "IDANSAPIR19941993";
 
 // Rate limiting configuration
 const MAX_ATTEMPTS = 5; // Maximum attempts per IP
