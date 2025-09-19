@@ -31,7 +31,24 @@ export default function UploadPage() {
   const handleFileSelect = (files: FileList | null) => {
     if (!files) return;
     const validFiles = Array.from(files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    
+    // Check if adding these files would exceed the limit
+    const currentCount = selectedFiles.length;
+    const newCount = currentCount + validFiles.length;
+    
+    if (newCount > 10) {
+      // Only add files up to the limit
+      const remainingSlots = 10 - currentCount;
+      const filesToAdd = validFiles.slice(0, remainingSlots);
+      setSelectedFiles(prev => [...prev, ...filesToAdd]);
+      
+      // Show warning if some files were not added
+      if (validFiles.length > remainingSlots) {
+        showToast(`ניתן להעלות עד 10 קבצים בכל פעם. נוספו ${remainingSlots} קבצים מתוך ${validFiles.length}`, 'info');
+      }
+    } else {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
   };
 
   // Auto-scroll to the selected items section when files are added
@@ -86,15 +103,25 @@ export default function UploadPage() {
         ) : (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
             <div className="glass-effect rounded-3xl p-8 pt-0 border border-gold-200">
-              <UploadZone onFileSelect={handleFileSelect} fileInputRef={fileInputRef} />
+              <UploadZone 
+                onFileSelect={handleFileSelect} 
+                fileInputRef={fileInputRef}
+                currentFileCount={selectedFiles.length}
+                maxFiles={10}
+              />
             </div>
 
             {selectedFiles.length > 0 && (
               <motion.div ref={firstItemRef} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-effect rounded-3xl p-6 border border-gold-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-emerald-600" />
-                  קבצים שנבחרו ({selectedFiles.length})
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-emerald-600" />
+                    קבצים שנבחרו
+                  </h3>
+                  <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                    {selectedFiles.length}/10
+                  </div>
+                </div>
                 <UploadPreview files={selectedFiles} onRemove={removeFile} isUploading={isUploading} />
               </motion.div>
             )}
@@ -112,7 +139,12 @@ export default function UploadPage() {
 
             {selectedFiles.length > 0 && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-effect rounded-3xl p-8 border border-gold-200 space-y-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">הוסיפו פרטים</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">הוסיפו פרטים</h3>
+                  <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                    {selectedFiles.length}/10
+                  </div>
+                </div>
 
                 <div className="space-y-4">
                   <div>
@@ -137,16 +169,26 @@ export default function UploadPage() {
                   </div>
                 </div>
 
-                <Button onClick={handleUpload} disabled={isUploading || selectedFiles.length === 0} className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
-                  {isUploading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      מעלה את הזיכרון שלכם...
-                    </div>
-                  ) : (
-                    `שתפו ${selectedFiles.length} ${selectedFiles.length === 1 ? 'זיכרון' : 'זכרונות'}`
-                  )}
-                </Button>
+                <div className="space-y-3">
+                  <div className="text-center text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    ניתן להעלות עד 10 קבצים בכל פעם. אם יש לכם יותר קבצים, תוכלו להעלות אותם בחלקים
+                  </div>
+                  
+                  <div className="text-center text-sm text-gray-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    ההעלאה עשויה לקחת זמן, תלוי בקצב האינטרנט וגודל הקבצים. סרטונים לוקחים זמן רב יותר - אנא המתינו בסבלנות
+                  </div>
+                  
+                  <Button onClick={handleUpload} disabled={isUploading || selectedFiles.length === 0} className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                    {isUploading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        מעלה את הזיכרון שלכם...
+                      </div>
+                    ) : (
+                      `שתפו ${selectedFiles.length} ${selectedFiles.length === 1 ? 'זיכרון' : 'זכרונות'}`
+                    )}
+                  </Button>
+                </div>
 
 
               </motion.div>
