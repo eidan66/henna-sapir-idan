@@ -1,6 +1,8 @@
 "use client";
 import type { WeddingMediaItem } from "@/Entities/WeddingMedia";
 import MediaItemWithSkeleton from "./MediaItemWithSkeleton";
+import { ResponsiveMasonry } from "react-responsive-masonry";
+import Masonry from "react-responsive-masonry";
 
 interface MediaGridProps {
   media: WeddingMediaItem[];
@@ -9,15 +11,19 @@ interface MediaGridProps {
 
 export default function MediaGrid({ media, onMediaClick }: MediaGridProps) {
   return (
-    <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
-      {media.map((item, index) => (
-        <MediaItemWithSkeleton
-          key={`${item.id}-${index}`}
-          item={item}
-          index={index}
-          onMediaClick={onMediaClick}
-        />
-      ))}
-    </div>
+    <ResponsiveMasonry
+      columnsCountBreakPoints={{ 350: 1, 700: 2, 1024: 4 }}
+    >
+      <Masonry gutter="20px">
+        {media.map((item, index) => (
+          <MediaItemWithSkeleton
+            key={`${item.id}-${index}`}
+            item={item}
+            index={index}
+            onMediaClick={onMediaClick}
+          />
+        ))}
+      </Masonry>
+    </ResponsiveMasonry>
   );
 }

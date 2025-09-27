@@ -13,7 +13,6 @@ import MediaGrid from "@/components/gallery/MediaGrid";
 import MediaViewer from "@/components/gallery/MediaViewer";
 import FilterTabs from "@/components/gallery/FilterTabs";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
-import MediaSkeleton from "@/components/gallery/MediaSkeleton";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -54,7 +53,14 @@ export default function GalleryPage() {
       if (pageToLoad === 1) {
         setMedia(mappedMedia);
       } else {
+        // Preserve scroll position when adding new media
+        const currentScrollPosition = window.pageYOffset;
         setMedia(prevMedia => [...prevMedia, ...mappedMedia]);
+        
+        // Restore scroll position after state update
+        requestAnimationFrame(() => {
+          window.scrollTo(0, currentScrollPosition);
+        });
       }
 
       // Prefer server hasMore; fallback: if page returned a full page, assume more
@@ -91,16 +97,18 @@ export default function GalleryPage() {
 
 
 
+  // Optimized intersection observer with stable dependencies
   useEffect(() => {
-    const options = { root: null, rootMargin: "20px", threshold: 1.0 };
+    if (!loader.current) return;
+
     const observer = new IntersectionObserver((entries) => {
       const target = entries[0];
       if (target && target.isIntersecting && hasMore && !isLoadingInitial && !isLoadingMore) {
         fetchMedia(page + 1);
       }
-    }, options);
+    }, { root: null, rootMargin: "20px", threshold: 1.0 });
 
-    if (loader.current) observer.observe(loader.current);
+    observer.observe(loader.current);
     return () => observer.disconnect();
   }, [hasMore, isLoadingInitial, isLoadingMore, page, fetchMedia]);
 
@@ -126,6 +134,17 @@ export default function GalleryPage() {
     ? media 
     : media.filter(item => item.media_type === activeFilter);
 
+  // Prevent scroll jump when filtering
+  const handleFilterChange = useCallback((filter: "all" | "photo" | "video") => {
+    const currentScrollPosition = window.pageYOffset;
+    setActiveFilter(filter);
+    
+    // Restore scroll position after state update
+    requestAnimationFrame(() => {
+      window.scrollTo(0, currentScrollPosition);
+    });
+  }, []);
+
   return (
     <div className="min-h-screen henna-gradient">
       <div className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
@@ -136,7 +155,7 @@ export default function GalleryPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <FilterTabs 
             activeFilter={activeFilter} 
-            onFilterChange={setActiveFilter}
+            onFilterChange={handleFilterChange}
             media={media}
             totalAll={totals.all}
             totalPhotos={totals.photos}
@@ -155,12 +174,66 @@ export default function GalleryPage() {
 
         <AnimatePresence mode="wait">
           {isLoadingInitial ? (
-            <MediaSkeleton />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 12 }, (_, i) => (
+                <div key={i} className="relative overflow-hidden rounded-2xl shadow-lg glass-effect border border-gold-200">
+                  <div 
+                    className="w-full bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse"
+                    style={{ height: `${200 + (i % 3) * 50}px` }}
+                  >
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" 
+                         style={{ 
+                           animation: 'shimmer 2s infinite',
+                           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)'
+                         }} />
+                    
+                    {/* Loading indicator */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-lg">
+                        <div className="w-6 h-6 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : filteredMedia.length > 0 ? (
-            <MediaGrid 
-              media={filteredMedia} 
-              onMediaClick={openViewer}
-            />
+            <>
+              <MediaGrid 
+                media={filteredMedia} 
+                onMediaClick={openViewer}
+              />
+              {/* Loading skeleton for additional items */}
+              {isLoadingMore && (
+                <div className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {Array.from({ length: 4 }, (_, i) => (
+                      <div key={`loading-${i}`} className="relative overflow-hidden rounded-2xl shadow-lg glass-effect border border-gold-200">
+                        <div 
+                          className="w-full bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse"
+                          style={{ height: `${200 + (i % 3) * 50}px` }}
+                        >
+                          {/* Shimmer effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" 
+                               style={{ 
+                                 animation: 'shimmer 2s infinite',
+                                 background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)'
+                               }} />
+                          
+                          {/* Loading indicator */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-8 h-8 bg-white/80 rounded-full flex items-center justify-center shadow-lg">
+                              <div className="w-4 h-4 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -186,9 +259,26 @@ export default function GalleryPage() {
         </AnimatePresence>
 
         {isLoadingMore && (
-          <div className="flex justify-center items-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex flex-col items-center justify-center py-12"
+          >
+            <div className="relative">
+              {/* Background circle */}
+              <div className="w-16 h-16 bg-gradient-to-br from-gold-100 to-cream-100 rounded-full flex items-center justify-center shadow-lg border border-gold-200">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+              </div>
+              {/* Shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-shimmer" 
+                   style={{ 
+                     animation: 'shimmer 2s infinite',
+                     background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)'
+                   }} />
+            </div>
+            <p className="mt-4 text-gray-600 text-sm font-medium">טוען זכרונות נוספים...</p>
+          </motion.div>
         )}
 
         {hasMore && !isLoadingInitial && !isLoadingMore && filteredMedia.length > 0 && (

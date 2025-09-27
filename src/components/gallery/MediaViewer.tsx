@@ -53,23 +53,38 @@ export default function MediaViewer({
       
       // Disable scrolling
       document.body.style.overflow = 'hidden';
-    } else {
-      // Re-enable scrolling
-      document.body.style.overflow = '';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${currentScroll}px`;
+      document.body.style.width = '100%';
       
-      // Restore scroll position after a short delay to ensure DOM is ready
-      setTimeout(() => {
-        window.scrollTo(0, scrollPosition);
-      }, 100);
+      window.addEventListener('keydown', handleKeyPress);
     }
 
-    window.addEventListener('keydown', handleKeyPress);
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
       // Cleanup scroll prevention
       document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
     };
-  }, [isOpen, onClose, onNavigate, scrollPosition]);
+  }, [isOpen, onClose, onNavigate]);
+
+  // Separate effect to handle scroll restoration only when viewer closes
+  useEffect(() => {
+    if (!isOpen && scrollPosition > 0) {
+      // Re-enable scrolling and restore position only when closing
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      
+      // Restore scroll position with requestAnimationFrame for smoother transition
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollPosition);
+      });
+    }
+  }, [isOpen, scrollPosition]);
 
   if (!media) return null;
 

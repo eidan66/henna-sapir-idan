@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Sapir & Idan Henna Album",
-  description: "Sapir & Idan Wedding Digital Album",
+  description: "Sapir & Idan Henna Digital Album",
   icons: {
     icon: '/wedding-rings.svg',
     shortcut: '/wedding-rings.svg',

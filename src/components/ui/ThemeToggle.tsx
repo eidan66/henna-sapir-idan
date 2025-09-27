@@ -35,7 +35,7 @@ export default function ThemeToggle() {
 
   // Prevent hydration mismatch by not rendering until mounted
   if (!mounted) {
-    return null;
+    return <div className="theme-toggle-fancy" style={{ fontSize: '10%' }} />;
   }
 
   return (

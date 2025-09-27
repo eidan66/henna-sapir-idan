@@ -1,6 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { User } from 'lucide-react';
 import type { WeddingMediaItem } from '@/Entities/WeddingMedia';
@@ -14,41 +14,121 @@ interface MediaItemWithSkeletonProps {
 
 export default function MediaItemWithSkeleton({ item, index, onMediaClick }: MediaItemWithSkeletonProps) {
   const [showSkeleton, setShowSkeleton] = useState(true);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const elementRef = useRef<HTMLDivElement>(null);
 
-  // Simple approach: show skeleton for a short time, then show media
+  // Intersection Observer for lazy loading
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSkeleton(false);
-    }, 500); // Show skeleton for 500ms then show media
+    // Default to loading first 6 items, then adjust based on screen size
+    let immediateLoadCount = 6;
     
-    return () => clearTimeout(timer);
-  }, []);
+    // Check if mobile or desktop (only on client side)
+    if (typeof window !== 'undefined') {
+      const isMobile = window.innerWidth < 768;
+      immediateLoadCount = isMobile ? 6 : 12;
+    }
+    
+    // Load first items immediately for better UX
+    if (index < immediateLoadCount) {
+      setShouldLoad(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Load immediately without delay
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: '100px', // Start loading 100px before the element is visible
+        threshold: 0.1
+      }
+    );
+
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [index]);
+
+  // Show skeleton until media is fully loaded
+  useEffect(() => {
+    if (!shouldLoad) return;
+    
+    // No delay - show content immediately
+    setShowSkeleton(false);
+  }, [shouldLoad]);
+
+  // Track when media is actually loaded
+  const handleMediaLoad = () => {
+    setMediaLoaded(true);
+    
+    // Preload next few images for better performance
+    if (index < 20 && typeof window !== 'undefined') { // Only preload first 20 images
+      const nextImage = new window.Image();
+      nextImage.src = item.media_url;
+    }
+  };
+
+  const handleMediaError = () => {
+    setMediaLoaded(true); // Still hide skeleton on error
+  };
 
   return (
     <motion.div
+      ref={elementRef}
       key={`${item.id}-${index}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="break-inside-avoid group cursor-pointer"
+      className="group cursor-pointer"
       onClick={() => onMediaClick(item)}
     >
       <div className="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 glass-effect border border-gold-200 group-hover:border-emerald-300">
         {/* Media Content */}
         <div className="relative">
           <AnimatePresence mode="wait">
-            {showSkeleton ? (
-              // Skeleton
+            {showSkeleton && !mediaLoaded ? (
+              // Enhanced Skeleton
               <motion.div
                 key="skeleton"
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="w-full bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse"
+                className="w-full relative overflow-hidden rounded-2xl"
                 style={{ height: `${200 + (index % 3) * 50}px` }}
               >
+                {/* Main skeleton background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse" />
+                
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" 
+                     style={{ 
+                       animation: 'shimmer 2s infinite',
+                       background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)'
+                     }} />
+                
+                {/* Loading indicator */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-8 h-8 border-2 border-gold-300 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-10 h-10 bg-white/80 rounded-full flex items-center justify-center shadow-lg">
+                    <div className="w-6 h-6 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                </div>
+                
+                {/* Media type indicator */}
+                <div className="absolute top-3 right-3">
+                  <div className="w-6 h-6 bg-white/60 rounded-full flex items-center justify-center">
+                    {item.media_type === 'photo' ? (
+                      <div className="w-3 h-3 bg-gold-400 rounded-sm" />
+                    ) : (
+                      <div className="w-3 h-3 bg-emerald-400 rounded-sm" />
+                    )}
+                  </div>
                 </div>
               </motion.div>
             ) : (
@@ -60,24 +140,41 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                 transition={{ duration: 0.3 }}
               >
                 {item.media_type === 'photo' ? (
-                  <Image
-                    src={item.media_url}
-                    alt={item.title || "Wedding memory"}
-                    width={500}
-                    height={500}
-                    className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
-                    loading="eager"
-                    decoding="async"
-                  />
+                  shouldLoad ? (
+                    <Image
+                      src={item.media_url}
+                      alt={item.title || "Wedding memory"}
+                      width={500}
+                      height={500}
+                      className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
+                      loading={index < 4 ? "eager" : "lazy"}
+                      priority={index < 2}
+                      decoding="async"
+                      onLoad={handleMediaLoad}
+                      onError={handleMediaError}
+                      placeholder="blur"
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse" />
+                  )
                 ) : (
-                  <VideoPreview
-                    mp4Url={item.media_url}
-                    posterUrl={item.thumbnail_url || ""}
-                    className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
-                    onError={() => {
-                      console.warn('Video failed to load in MediaGrid');
-                    }}
-                  />
+                  shouldLoad ? (
+                    <VideoPreview
+                      mp4Url={item.media_url}
+                      posterUrl={item.thumbnail_url || ""}
+                      className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
+                      onLoad={handleMediaLoad}
+                      onError={() => {
+                        console.debug('Video failed to load in MediaGrid for item:', item.id);
+                        handleMediaError();
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )
                 )}
               </motion.div>
             )}

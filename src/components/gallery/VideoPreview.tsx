@@ -60,9 +60,11 @@ export default function VideoPreview({
   }, []);
 
   const handleVideoError = () => {
+    console.debug('Video failed to load:', mp4Url);
     setHasError(true);
     setIsLoading(false);
     setShowFallback(!posterUrl);
+    setPosterVisible(true);
     onError?.();
   };
 
@@ -103,9 +105,8 @@ export default function VideoPreview({
           muted
           loop
           autoPlay
-          preload="auto"
+          preload="metadata"
           poster={posterUrl}
-          crossOrigin="anonymous"
           disableRemotePlayback
           controls={false}
           className="w-full h-auto object-cover"
