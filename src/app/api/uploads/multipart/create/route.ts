@@ -47,14 +47,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (350MB limit)
-    const MAX_FILE_SIZE = 350 * 1024 * 1024;
-    if (size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: 'File size exceeds 350MB limit' },
-        { status: 400 }
-      );
-    }
+    // Validate file size (350MB limit) - COMMENTED OUT FOR UNLIMITED UPLOADS
+    // const MAX_FILE_SIZE = 350 * 1024 * 1024;
+    // if (size > MAX_FILE_SIZE) {
+    //   return NextResponse.json(
+    //     { error: 'File size exceeds 350MB limit' },
+    //     { status: 400 }
+    //   );
+    // }
 
     // Generate unique key
     const extension = fileName.split('.').pop();

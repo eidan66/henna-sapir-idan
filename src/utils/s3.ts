@@ -33,15 +33,15 @@ export const generateUploadUrl = async (
     };
   }
 
-  // Validate file size (350MB limit)
-  const MAX_FILE_SIZE = 350 * 1024 * 1024; // 350MB in bytes
-  if (filesize > MAX_FILE_SIZE) {
-    throw {
-      status: 400,
-      code: 'FILE_TOO_LARGE',
-      message: 'File size exceeds 350MB limit.'
-    };
-  }
+  // Validate file size (350MB limit) - COMMENTED OUT FOR UNLIMITED UPLOADS
+  // const MAX_FILE_SIZE = 350 * 1024 * 1024; // 350MB in bytes
+  // if (filesize > MAX_FILE_SIZE) {
+  //   throw {
+  //     status: 400,
+  //     code: 'FILE_TOO_LARGE',
+  //     message: 'File size exceeds 350MB limit.'
+  //   };
+  // }
 
   // Generate unique filename
   const extension = filename.split('.').pop();

@@ -32,23 +32,26 @@ export default function UploadPage() {
     if (!files) return;
     const validFiles = Array.from(files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
     
-    // Check if adding these files would exceed the limit
-    const currentCount = selectedFiles.length;
-    const newCount = currentCount + validFiles.length;
+    // Check if adding these files would exceed the limit - COMMENTED OUT FOR UNLIMITED FILES
+    // const currentCount = selectedFiles.length;
+    // const newCount = currentCount + validFiles.length;
     
-    if (newCount > 10) {
-      // Only add files up to the limit
-      const remainingSlots = 10 - currentCount;
-      const filesToAdd = validFiles.slice(0, remainingSlots);
-      setSelectedFiles(prev => [...prev, ...filesToAdd]);
+    // if (newCount > 10) {
+    //   // Only add files up to the limit
+    //   const remainingSlots = 10 - currentCount;
+    //   const filesToAdd = validFiles.slice(0, remainingSlots);
+    //   setSelectedFiles(prev => [...prev, ...filesToAdd]);
       
-      // Show warning if some files were not added
-      if (validFiles.length > remainingSlots) {
-        showToast(`ניתן להעלות עד 10 קבצים בכל פעם. נוספו ${remainingSlots} קבצים מתוך ${validFiles.length}`, 'info');
-      }
-    } else {
-      setSelectedFiles(prev => [...prev, ...validFiles]);
-    }
+    //   // Show warning if some files were not added
+    //   if (validFiles.length > remainingSlots) {
+    //     showToast(`ניתן להעלות עד 10 קבצים בכל פעם. נוספו ${remainingSlots} קבצים מתוך ${validFiles.length}`, 'info');
+    //   }
+    // } else {
+    //   setSelectedFiles(prev => [...prev, ...validFiles]);
+    // }
+    
+    // Add all files without limit
+    setSelectedFiles(prev => [...prev, ...validFiles]);
   };
 
   // Auto-scroll to the selected items section when files are added
@@ -106,8 +109,8 @@ export default function UploadPage() {
               <UploadZone 
                 onFileSelect={handleFileSelect} 
                 fileInputRef={fileInputRef}
-                currentFileCount={selectedFiles.length}
-                maxFiles={10}
+                // currentFileCount={selectedFiles.length} - COMMENTED OUT FOR UNLIMITED FILES
+                // maxFiles={10} - COMMENTED OUT FOR UNLIMITED FILES
               />
             </div>
 
@@ -170,9 +173,9 @@ export default function UploadPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-center text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  {/* <div className="text-center text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
                     ניתן להעלות עד 10 קבצים בכל פעם. אם יש לכם יותר קבצים, תוכלו להעלות אותם בחלקים
-                  </div>
+                  </div> */}
                   
                   <div className="text-center text-sm text-gray-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
                     ההעלאה עשויה לקחת זמן, תלוי בקצב האינטרנט וגודל הקבצים. סרטונים לוקחים זמן רב יותר - אנא המתינו בסבלנות

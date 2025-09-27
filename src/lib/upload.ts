@@ -156,14 +156,14 @@ export const uploadFiles = async (
  * Validate file before upload
  */
 export const validateFile = (file: File): { valid: boolean; error?: string } => {
-  // Check file size (200MB limit)
-  const MAX_SIZE = 200 * 1024 * 1024;
-  if (file.size > MAX_SIZE) {
-    return {
-      valid: false,
-      error: `File size ${(file.size / (1024 * 1024)).toFixed(1)}MB exceeds 200MB limit`,
-    };
-  }
+  // Check file size (200MB limit) - COMMENTED OUT FOR UNLIMITED UPLOADS
+  // const MAX_SIZE = 200 * 1024 * 1024;
+  // if (file.size > MAX_SIZE) {
+  //   return {
+  //     valid: false,
+  //     error: `File size ${(file.size / (1024 * 1024)).toFixed(1)}MB exceeds 200MB limit`,
+  //   };
+  // }
 
   // Check if file has a valid type
   if (!file.type || file.type === 'application/octet-stream') {

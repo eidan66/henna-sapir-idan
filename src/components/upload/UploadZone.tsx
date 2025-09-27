@@ -16,8 +16,8 @@ interface UploadZoneProps {
 export default function UploadZone({
   onFileSelect,
   fileInputRef,
-  currentFileCount = 0,
-  maxFiles = 10,
+  // currentFileCount = 0, - COMMENTED OUT FOR UNLIMITED FILES
+  // maxFiles = 10, - COMMENTED OUT FOR UNLIMITED FILES
 }: UploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -54,15 +54,18 @@ export default function UploadZone({
         <p className="text-gray-600 max-w-md mx-auto">
           העלו תמונות וסרטונים מהיום הקסום הזה כדי ליצור זכרונות נצחיים יחד
           <br />
-          <span className="mt-3 text-sm font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+          {/* <span className="mt-3 text-sm font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
             ניתן להעלות עד 10 קבצים בכל פעם
-          </span>
+          </span> */}
+          {/* <span className="mt-3 text-sm font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            אין הגבלה על מספר הקבצים או גודלם
+          </span> */}
         </p>
-        {currentFileCount >= maxFiles && (
+        {/* {currentFileCount >= maxFiles && (
           <div className="mt-3 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
             הגעתם למגבלה של {maxFiles} קבצים. העלו את הקבצים הנוכחיים לפני הוספת עוד
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Upload Zone */}
@@ -103,24 +106,21 @@ export default function UploadZone({
             <p className="text-gray-500 text-sm mb-4">
               תומך ב-JPEG, PNG, GIF, MP4, MOV ועוד
               <br />
-              <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
+              {/* <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-200">
                 ניתן להעלות עד 10 קבצים בכל פעם
-              </span>
+              </span> */}
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
               onClick={() => fileInputRef.current?.click()}
-              disabled={currentFileCount >= maxFiles}
-              className={`${
-                currentFileCount >= maxFiles 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800'
-              } text-white`}
+              // disabled={currentFileCount >= maxFiles} - COMMENTED OUT FOR UNLIMITED FILES
+              className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white"
             >
               <Upload className="w-4 h-4 ml-2" />
-              {currentFileCount >= maxFiles ? 'הגעתם למגבלה' : 'בחרו קבצים'}
+              {/* {currentFileCount >= maxFiles ? 'הגעתם למגבלה' : 'בחרו קבצים'} */}
+              בחרו קבצים
             </Button>
           </div>
         </div>
