@@ -15,7 +15,7 @@ import MediaViewer from "@/components/gallery/MediaViewer";
 import FilterTabs from "@/components/gallery/FilterTabs";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 
-  const ITEMS_PER_PAGE = 150;
+  const ITEMS_PER_PAGE = 50;
 
 export default function GalleryPage() {
   const [media, setMedia] = useState<WeddingMediaItem[]>([]);
