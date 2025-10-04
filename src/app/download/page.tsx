@@ -249,9 +249,29 @@ export default function DownloadPage() {
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
                   קוד גישה נדרש
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
                   אנא הזינו את הקוד שקיבלתם כדי לגשת להורדה
                 </p>
+                
+                {/* Disclaimer */}
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                        חשוב לדעת:
+                      </h3>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        <strong>רק הזוג (ספיר ועידן)</strong> יכול להוריד את כל התמונות והסרטונים. 
+                        האורחים יכולים להוריד תמונות בודדות דרך הגלריה בלבד.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <form onSubmit={handleCodeSubmit} className="max-w-sm mx-auto">
