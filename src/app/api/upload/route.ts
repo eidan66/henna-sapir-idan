@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     logger.apiRequest('POST', '/api/upload', {
       requestId,
-      userAgent: request.headers.get('user-agent'),
+      userAgent: request.headers.get('user-agent') ?? undefined,
       ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
     });
 

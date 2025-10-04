@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { coupleId, fileName, mime, fileSize } = await request.json() as PresignRequest;
+    const { coupleId, fileName, mime } = await request.json() as PresignRequest;
 
     // Validate required fields
     if (!coupleId || !fileName || !mime) {

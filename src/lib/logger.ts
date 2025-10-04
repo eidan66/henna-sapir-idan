@@ -16,7 +16,7 @@ export interface LogContext {
   method?: string;
   statusCode?: number;
   duration?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 class Logger {
@@ -29,7 +29,7 @@ class Logger {
     return `[${timestamp}] [${process.env.NEXT_PUBLIC_SENTRY_PROJECT}]: ${level.toUpperCase()}: ${message}${contextStr}`;
   }
 
-  private logToConsole(level: LogLevel, message: string, context?: LogContext): void {
+  private logToConsole(): void {
     // Disabled console logging to prevent infinite loops with Sentry
     // Only use Sentry.logger for structured logging
   }
@@ -42,14 +42,17 @@ class Logger {
     Sentry.withScope((scope) => {
       if (context) {
         Object.keys(context).forEach(key => {
-          scope.setTag(key, context[key]);
+          const value = context[key];
+          if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            scope.setTag(key, String(value));
+          }
         });
       }
       
       // Add breadcrumb
       scope.addBreadcrumb({
         message,
-        level: level as any,
+        level: level as Sentry.SeverityLevel,
         timestamp: Date.now() / 1000,
       });
       
@@ -76,22 +79,22 @@ class Logger {
   }
 
   debug(message: string, context?: LogContext): void {
-    this.logToConsole(LogLevel.DEBUG, message, context);
+    this.logToConsole();
     this.logToSentry(LogLevel.DEBUG, message, context);
   }
 
   info(message: string, context?: LogContext): void {
-    this.logToConsole(LogLevel.INFO, message, context);
+    this.logToConsole();
     this.logToSentry(LogLevel.INFO, message, context);
   }
 
   warn(message: string, context?: LogContext): void {
-    this.logToConsole(LogLevel.WARN, message, context);
+    this.logToConsole();
     this.logToSentry(LogLevel.WARN, message, context);
   }
 
   error(message: string, error?: Error, context?: LogContext): void {
-    this.logToConsole(LogLevel.ERROR, message, context);
+    this.logToConsole();
     this.logToSentry(LogLevel.ERROR, message, context, error);
   }
 
@@ -181,7 +184,7 @@ class Logger {
   }
 
   // New Sentry-specific methods
-  startSpan<T>(operation: string, name: string, callback: (span: any) => T, context?: LogContext): T {
+  startSpan<T>(operation: string, name: string, callback: (span: Sentry.Span) => T, context?: LogContext): T {
     return Sentry.startSpan(
       {
         op: operation,
@@ -191,7 +194,10 @@ class Logger {
         // Add context as attributes
         if (context) {
           Object.keys(context).forEach(key => {
-            span.setAttribute(key, context[key]);
+            const value = context[key];
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+              span.setAttribute(key, value);
+            }
           });
         }
         

@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
       logger.info('Successful access verification', {
         clientIP,
         sessionId,
-        userAgent: request.headers.get('user-agent'),
+        userAgent: request.headers.get('user-agent') ?? undefined,
         timestamp: new Date().toISOString(),
       });
       
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       logger.warn('Failed access attempt', {
         clientIP,
         attempts: tracker?.attempts || 1,
-        userAgent: request.headers.get('user-agent'),
+        userAgent: request.headers.get('user-agent') ?? undefined,
         timestamp: new Date().toISOString(),
       });
       
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
         logger.securityEvent('Suspicious access attempts detected', {
           clientIP,
           attempts: tracker.attempts,
-          userAgent: request.headers.get('user-agent'),
+          userAgent: request.headers.get('user-agent') ?? undefined,
           timestamp: new Date().toISOString(),
         });
       }
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error('Verification error', error instanceof Error ? error : new Error(String(error)), {
       clientIP: getClientIP(request),
-      userAgent: request.headers.get('user-agent'),
+      userAgent: request.headers.get('user-agent') ?? undefined,
       timestamp: new Date().toISOString(),
     });
     
