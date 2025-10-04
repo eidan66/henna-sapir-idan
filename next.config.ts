@@ -24,6 +24,9 @@ const sentryWebpackPluginOptions = {
   org: "idan-levian",
   project: process.env.SENTRY_PROJECT || "henna-idan-sapir",
 
+  // Auth token for uploading source maps
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
 
