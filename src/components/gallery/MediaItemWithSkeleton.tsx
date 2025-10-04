@@ -2,10 +2,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { User } from 'lucide-react';
+import { User, Download } from 'lucide-react';
 import type { WeddingMediaItem } from '@/Entities/WeddingMedia';
 import VideoPreview from './VideoPreview';
 import { logger } from '@/lib/logger';
+import { downloadMedia } from '@/utils';
 
 interface MediaItemWithSkeletonProps {
   item: WeddingMediaItem;
@@ -17,7 +18,54 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [mediaLoaded, setMediaLoaded] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const elementRef = useRef<HTMLDivElement>(null);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening the media viewer
+    if (isDownloading) return;
+    
+    logger.userAction('Download button clicked in MediaItemWithSkeleton', {
+      mediaId: item.id,
+      mediaType: item.media_type,
+      mediaUrl: item.media_url,
+      title: item.title,
+      uploaderName: item.uploader_name,
+      itemIndex: index,
+      shouldLoad,
+      mediaLoaded,
+    });
+    
+    setIsDownloading(true);
+    try {
+      await downloadMedia(
+        item.media_url,
+        item.media_type,
+        item.title,
+        item.id
+      );
+      
+      logger.userAction('Download completed successfully in MediaItemWithSkeleton', {
+        mediaId: item.id,
+        mediaType: item.media_type,
+        title: item.title,
+        downloadLocation: 'MediaItemWithSkeleton',
+        itemIndex: index,
+      });
+    } catch (error) {
+      logger.error('Download failed in MediaItemWithSkeleton', error instanceof Error ? error : new Error(String(error)), {
+        mediaId: item.id,
+        mediaType: item.media_type,
+        mediaUrl: item.media_url,
+        title: item.title,
+        itemIndex: index,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      // Error already logged above with logger.error
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -186,6 +234,15 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
           
           {/* Hover Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          
+          {/* Download Button */}
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="absolute top-3 right-3 w-8 h-8 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white border border-white/30 opacity-0 group-hover:opacity-100 transition-all duration-300 disabled:opacity-50"
+          >
+            <Download className={`w-4 h-4 ${isDownloading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {/* Content Overlay */}

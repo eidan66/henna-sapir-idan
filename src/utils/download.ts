@@ -1,0 +1,238 @@
+import { logger } from '@/lib/logger';
+
+/**
+ * Downloads an image from a URL to the user's device
+ * @param url - The URL of the image to download
+ * @param filename - Optional filename for the downloaded file
+ * @param mediaId - Optional media ID for logging purposes
+ */
+export async function downloadImage(
+  url: string, 
+  filename?: string, 
+  mediaId?: string
+): Promise<void> {
+  try {
+    logger.info('Starting image download', {
+      url,
+      filename,
+      mediaId,
+      userAgent: navigator.userAgent,
+    });
+
+    // Fetch the image
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    // Get the blob
+    const blob = await response.blob();
+    
+    logger.info('Image fetched successfully', {
+      url,
+      mediaId,
+      responseStatus: response.status,
+      responseHeaders: Object.fromEntries(response.headers.entries()),
+      blobSize: blob.size,
+      blobType: blob.type,
+    });
+    
+    // Create filename if not provided
+    if (!filename) {
+      const urlParts = url.split('/');
+      const lastPart = urlParts[urlParts.length - 1];
+      const extension = lastPart.split('.').pop() || 'jpg';
+      filename = `henna-memory-${Date.now()}.${extension}`;
+    }
+
+    logger.info('Creating download link for image', {
+      url,
+      mediaId,
+      filename,
+      blobSize: blob.size,
+      blobType: blob.type,
+    });
+
+    // Create download link
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up
+    window.URL.revokeObjectURL(downloadUrl);
+
+    logger.info('Image download completed successfully', {
+      url,
+      filename,
+      mediaId,
+      fileSize: blob.size,
+      contentType: blob.type,
+    });
+
+  } catch (error) {
+    logger.error('Image download failed', error instanceof Error ? error : new Error(String(error)), {
+      url,
+      filename,
+      mediaId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
+
+/**
+ * Downloads a video from a URL to the user's device
+ * @param url - The URL of the video to download
+ * @param filename - Optional filename for the downloaded file
+ * @param mediaId - Optional media ID for logging purposes
+ */
+export async function downloadVideo(
+  url: string, 
+  filename?: string, 
+  mediaId?: string
+): Promise<void> {
+  try {
+    logger.info('Starting video download', {
+      url,
+      filename,
+      mediaId,
+      userAgent: navigator.userAgent,
+    });
+
+    // Fetch the video
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch video: ${response.status} ${response.statusText}`);
+    }
+
+    // Get the blob
+    const blob = await response.blob();
+    
+    logger.info('Video fetched successfully', {
+      url,
+      mediaId,
+      responseStatus: response.status,
+      responseHeaders: Object.fromEntries(response.headers.entries()),
+      blobSize: blob.size,
+      blobType: blob.type,
+    });
+    
+    // Create filename if not provided
+    if (!filename) {
+      const urlParts = url.split('/');
+      const lastPart = urlParts[urlParts.length - 1];
+      const extension = lastPart.split('.').pop() || 'mp4';
+      filename = `henna-video-${Date.now()}.${extension}`;
+    }
+
+    logger.info('Creating download link for video', {
+      url,
+      mediaId,
+      filename,
+      blobSize: blob.size,
+      blobType: blob.type,
+    });
+
+    // Create download link
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up
+    window.URL.revokeObjectURL(downloadUrl);
+
+    logger.info('Video download completed successfully', {
+      url,
+      filename,
+      mediaId,
+      fileSize: blob.size,
+      contentType: blob.type,
+    });
+
+  } catch (error) {
+    logger.error('Video download failed', error instanceof Error ? error : new Error(String(error)), {
+      url,
+      filename,
+      mediaId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
+
+/**
+ * Downloads media (image or video) based on its type
+ * @param mediaUrl - The URL of the media to download
+ * @param mediaType - The type of media ('photo' or 'video')
+ * @param title - Optional title for the filename
+ * @param mediaId - Optional media ID for logging purposes
+ */
+export async function downloadMedia(
+  mediaUrl: string,
+  mediaType: 'photo' | 'video',
+  title?: string,
+  mediaId?: string
+): Promise<void> {
+  try {
+    logger.info('Starting media download process', {
+      mediaUrl,
+      mediaType,
+      title,
+      mediaId,
+      userAgent: navigator.userAgent,
+    });
+
+    // Create filename from title if available
+    let filename: string | undefined;
+    if (title) {
+      const sanitizedTitle = title.replace(/[^a-zA-Z0-9\u0590-\u05FF\s]/g, '').trim();
+      const extension = mediaType === 'photo' ? 'jpg' : 'mp4';
+      filename = `${sanitizedTitle || 'henna-memory'}-${Date.now()}.${extension}`;
+    }
+
+    logger.info('Media download filename determined', {
+      mediaUrl,
+      mediaType,
+      title,
+      mediaId,
+      filename,
+      filenameGenerated: !!filename,
+    });
+
+    if (mediaType === 'photo') {
+      await downloadImage(mediaUrl, filename, mediaId);
+    } else {
+      await downloadVideo(mediaUrl, filename, mediaId);
+    }
+
+    logger.info('Media download process completed successfully', {
+      mediaUrl,
+      mediaType,
+      title,
+      mediaId,
+      filename,
+    });
+
+  } catch (error) {
+    logger.error('Media download process failed', error instanceof Error ? error : new Error(String(error)), {
+      mediaUrl,
+      mediaType,
+      title,
+      mediaId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}

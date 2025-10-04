@@ -162,4 +162,7 @@ export const isIOS = (): boolean => {
  */
 export const isMobile = (): boolean => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}; 
+};
+
+// Export download utilities
+export { downloadImage, downloadVideo, downloadMedia } from './download'; 
