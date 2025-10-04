@@ -72,14 +72,8 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
   // Load ALL items immediately - no lazy loading for better UX
   useEffect(() => {
     setShouldLoad(true);
+    setShowSkeleton(false); // Show content immediately
   }, []);
-
-  // Show media immediately when shouldLoad is true, don't wait for actual load
-  useEffect(() => {
-    if (shouldLoad) {
-      setShowSkeleton(false);
-    }
-  }, [shouldLoad]);
 
   // No need for preload strategy - all items load immediately
 
@@ -158,7 +152,7 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
         {/* Media Content */}
         <div className="relative">
           <AnimatePresence mode="wait">
-            {showSkeleton && !mediaLoaded ? (
+            {false ? ( // Never show skeleton - always show content immediately
               // Enhanced Skeleton
               <motion.div
                 key="skeleton"
@@ -197,23 +191,23 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                 </div>
               </motion.div>
             ) : (
-              // Actual Media
+              // Actual Media - Always show immediately
               <motion.div
                 key="media"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.1 }}
               >
                 {item.media_type === 'photo' ? (
-                  shouldLoad ? (
+                  true ? ( // Always load photos immediately
                     <Image
                       src={apiServices.imageProxy.getProxiedImageUrl(item.media_url)}
                       alt={item.title || "Wedding memory"}
                       width={500}
                       height={500}
                       className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
-                      loading={index < 50 ? "eager" : "lazy"} // Much more aggressive eager loading
-                      priority={index < 25} // Many more priority items for faster loading
+                      loading="eager" // Load all images immediately
+                      priority={index < 300} // Priority for first 100 items
                       decoding="async"
                       onLoad={handleMediaLoad}
                       onError={handleMediaError}
@@ -225,7 +219,7 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                     <div className="w-full h-48 bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse" />
                   )
                 ) : (
-                  shouldLoad ? (
+                  true ? ( // Always load videos immediately
                     <VideoPreview
                       mp4Url={item.media_url}
                       posterUrl={item.thumbnail_url || ""}

@@ -19,9 +19,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
+    const type = searchParams.get('type'); // 'photo' or 'video'
 
     // List files from S3 (now includes metadata)
-    const items = await listUploadedFiles();
+    const allItems = await listUploadedFiles();
+
+    // Filter by type if specified
+    let items = allItems;
+    if (type) {
+      if (type === 'photo') {
+        items = allItems.filter(item => item.type === 'image');
+      } else if (type === 'video') {
+        items = allItems.filter(item => item.type === 'video');
+      }
+    }
 
     const start = (page - 1) * limit;
     const end = start + limit;

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { WeddingMedia } from "@/Entities/WeddingMedia";
 import type { WeddingMediaItem } from "@/Entities/WeddingMedia";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus, Heart, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { logger } from "@/lib/logger";
+import { apiServices } from "@/services/api";
 
 import { createPageUrl } from "@/utils";
 import MediaGrid from "@/components/gallery/MediaGrid";
@@ -15,7 +15,7 @@ import MediaViewer from "@/components/gallery/MediaViewer";
 import FilterTabs from "@/components/gallery/FilterTabs";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 
-  const ITEMS_PER_PAGE = 100;
+  const ITEMS_PER_PAGE = 150;
 
 export default function GalleryPage() {
   const [media, setMedia] = useState<WeddingMediaItem[]>([]);
@@ -24,7 +24,8 @@ export default function GalleryPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<WeddingMediaItem | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "photo" | "video">("all");
+  // const [activeFilter, setActiveFilter] = useState<"all" | "photo" | "video">("all");
+  const activeFilter = "all"; // Fixed to show all items
   const [viewerIndex, setViewerIndex] = useState(0);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [totals, setTotals] = useState<{ all?: number; photos?: number; videos?: number }>({});
@@ -36,13 +37,14 @@ export default function GalleryPage() {
     });
   }, []); // Empty dependency array ensures this runs only once
 
-  const loader = useRef<HTMLDivElement | null>(null);
+  // No loader ref needed - all items load immediately
 
-  const fetchMedia = useCallback(async (pageToLoad: number) => {
+  const fetchMedia = useCallback(async (pageToLoad: number, filterType?: 'photo' | 'video') => {
     logger.info('Fetching media data', {
       component: 'GalleryPage',
       page: pageToLoad,
       itemsPerPage: ITEMS_PER_PAGE,
+      filterType,
     });
     
     if (pageToLoad === 1) {
@@ -52,23 +54,43 @@ export default function GalleryPage() {
     }
 
     try {
-      const data = await WeddingMedia.list("-created_date", pageToLoad, ITEMS_PER_PAGE);
+      // Use the new API service with type filtering
+      const data = await apiServices.media.getMediaList({
+        sort: 'created_date',
+        page: pageToLoad,
+        limit: ITEMS_PER_PAGE,
+        type: filterType, // Pass the filter type to API
+      });
 
       logger.info('Media data fetched successfully', {
         component: 'GalleryPage',
         page: pageToLoad,
         itemsCount: data.items.length,
+        filterType,
       });
 
-      const mappedMedia: WeddingMediaItem[] = data.items.map(item => ({
-        id: item.id,
-        media_url: item.url,
-        media_type: (item.type === 'image' ? 'photo' : 'video') as 'photo' | 'video',
-        title: item.title || '',
-        uploader_name: item.uploader_name || 'אורח אנונימי',
-        created_date: item.created_date || new Date().toISOString(),
-        thumbnail_url: item.thumbnail_url,
-      }));
+      console.log('Raw API data:', {
+        page: pageToLoad,
+        filterType,
+        totalItems: data.items.length,
+        items: data.items,
+        videoItems: data.items.filter((item: any) => item.type === 'video'),
+        imageItems: data.items.filter((item: any) => item.type === 'image')
+      });
+      
+      const mappedMedia: WeddingMediaItem[] = data.items.map((item: any) => {
+        const mappedItem = {
+          id: item.id,
+          media_url: item.url,
+          media_type: (item.type === 'image' ? 'photo' : item.type === 'video' ? 'video' : 'photo') as 'photo' | 'video',
+          title: item.title || '',
+          uploader_name: item.uploader_name || 'אורח אנונימי',
+          created_date: item.created_date || new Date().toISOString(),
+          thumbnail_url: item.thumbnail_url,
+        };
+        console.log('Mapped item:', mappedItem);
+        return mappedItem;
+      });
 
       if (pageToLoad === 1) {
         setMedia(mappedMedia);
@@ -99,7 +121,7 @@ export default function GalleryPage() {
   }, []);
 
   useEffect(() => {
-    fetchMedia(1);
+    fetchMedia(1); // Load all media initially
     // Fetch total counts independently
     Promise.all([
       fetch('/api/media/count').then(r=>r.json()).catch(()=>({})),
@@ -117,27 +139,67 @@ export default function GalleryPage() {
 
 
 
-  // Optimized intersection observer with stable dependencies
+  // Load all items immediately - no intersection observer needed
   useEffect(() => {
-    if (!loader.current) return;
+    // Load all available pages immediately
+    const loadAllPages = async () => {
+      let currentPage = 1;
+      let hasMorePages = true;
+      
+      while (hasMorePages && !isLoadingInitial) {
+        const apiFilterType = activeFilter === 'all' ? undefined : activeFilter;
+        try {
+          const data = await apiServices.media.getMediaList({
+            sort: 'created_date',
+            page: currentPage,
+            limit: ITEMS_PER_PAGE,
+            type: apiFilterType,
+          });
 
-    // Check if mobile for different loading strategy
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+          if (data.items.length === 0) {
+            hasMorePages = false;
+            break;
+          }
 
-    const observer = new IntersectionObserver((entries) => {
-      const target = entries[0];
-      if (target && target.isIntersecting && hasMore && !isLoadingInitial && !isLoadingMore) {
-        fetchMedia(page + 1);
+          const mappedMedia: WeddingMediaItem[] = data.items.map((item: any) => ({
+            id: item.id,
+            media_url: item.url,
+            media_type: (item.type === 'image' ? 'photo' : item.type === 'video' ? 'video' : 'photo') as 'photo' | 'video',
+            title: item.title || '',
+            uploader_name: item.uploader_name || 'אורח אנונימי',
+            created_date: item.created_date || new Date().toISOString(),
+            thumbnail_url: item.thumbnail_url,
+          }));
+
+          if (currentPage === 1) {
+            setMedia(mappedMedia);
+          } else {
+            setMedia(prevMedia => [...prevMedia, ...mappedMedia]);
+          }
+
+          // Check if there are more pages
+          const anyData = data as unknown as { hasMore?: boolean };
+          hasMorePages = typeof anyData.hasMore === 'boolean' ? anyData.hasMore : (mappedMedia.length === ITEMS_PER_PAGE);
+          
+          currentPage++;
+          
+          // Small delay to prevent overwhelming the browser
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error("Error loading page:", currentPage, error);
+          hasMorePages = false;
+        }
       }
-    }, { 
-      root: null, 
-      rootMargin: isMobile ? "300px" : "50px", // Much larger margin for mobile
-      threshold: 0.1 // Lower threshold for earlier triggering
-    });
+      
+      setHasMore(false);
+      setIsLoadingInitial(false);
+    };
 
-    observer.observe(loader.current);
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingInitial, isLoadingMore, page, fetchMedia]);
+    // Only load all pages if we're not already loading
+    if (!isLoadingInitial && hasMore) {
+      loadAllPages();
+    }
+  }, [activeFilter, isLoadingInitial, hasMore]);
 
   const openViewer = (mediaItem: WeddingMediaItem) => {
     setSelectedMedia(mediaItem);
@@ -157,26 +219,36 @@ export default function GalleryPage() {
     setViewerIndex(newIndex);
   };
 
-  const filteredMedia = activeFilter === "all" 
-    ? media 
-    : media.filter(item => item.media_type === activeFilter);
+  // No need for frontend filtering since API handles it
+  const filteredMedia = media;
+    
+  console.log('Current state:', {
+    activeFilter,
+    totalMedia: media.length,
+    mediaTypes: media.map(item => item.media_type)
+  });
 
-  // Prevent scroll jump when filtering
-  const handleFilterChange = useCallback((filter: "all" | "photo" | "video") => {
-    logger.userAction('Filter changed', {
-      component: 'GalleryPage',
-      newFilter: filter,
-      previousFilter: activeFilter,
-    });
+  // Handle filter change with API call - DISABLED
+  // const handleFilterChange = useCallback((filter: "all" | "photo" | "video") => {
+  //   logger.userAction('Filter changed', {
+  //     component: 'GalleryPage',
+  //     newFilter: filter,
+  //     previousFilter: activeFilter,
+  //   });
     
-    const currentScrollPosition = window.pageYOffset;
-    setActiveFilter(filter);
+  //   setActiveFilter(filter);
     
-    // Restore scroll position after state update
-    requestAnimationFrame(() => {
-      window.scrollTo(0, currentScrollPosition);
-    });
-  }, [activeFilter]);
+  //   // Reset pagination and fetch new data based on filter
+  //   setPage(1);
+  //   setHasMore(true);
+    
+  //   // Convert filter to API type parameter
+  //   const apiFilterType = filter === 'all' ? undefined : filter;
+  //   fetchMedia(1, apiFilterType);
+  // }, [activeFilter, fetchMedia]);
+  
+  // Dummy function to prevent errors
+  const handleFilterChange = useCallback(() => {}, []);
 
   return (
     <div className="min-h-screen henna-gradient">
@@ -314,9 +386,7 @@ export default function GalleryPage() {
           </motion.div>
         )}
 
-        {hasMore && !isLoadingInitial && !isLoadingMore && filteredMedia.length > 0 && (
-          <div ref={loader} className="h-1"></div>
-        )}
+        {/* No loader needed - all items load immediately */}
       </div>
 
       <MediaViewer

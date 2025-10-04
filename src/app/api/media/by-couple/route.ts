@@ -19,6 +19,7 @@ interface MediaItem {
   height: number;
   duration?: number;
   type: 'image' | 'video';
+  media_type: 'photo' | 'video'; // Add media_type for filtering
   originalKey: string;
   createdAt: string;
   status: 'processing' | 'ready' | 'failed';
@@ -154,6 +155,7 @@ export async function GET(request: NextRequest) {
             height: metadata.height || 0,
             duration: metadata.duration,
             type: metadata.duration ? 'video' : 'image',
+            media_type: metadata.duration ? 'video' : 'photo', // Add media_type for filtering
             originalKey: metadata.originalKey || '',
             createdAt: metadata.createdAt || new Date().toISOString(),
             status: metadata.status === 'completed' ? 'ready' : metadata.status === 'failed' ? 'failed' : 'processing',

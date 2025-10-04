@@ -39,8 +39,21 @@ export default function FilterTabs({ activeFilter, onFilterChange, media, totalA
     { id: 'video', label: 'סרטונים', icon: Video, count: videoCount },
   ];
 
+  // FILTERS DISABLED - Show only "All" option
   return (
     <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+      {/* Show only "All" filter - others commented out */}
+      <motion.div
+        className="flex items-center gap-2 px-4 py-2 rounded-full font-medium bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg border border-white/40 w-full sm:w-auto justify-center sm:justify-start"
+      >
+        <Grid3X3 className="w-4 h-4" />
+        <span>כל הזכרונות</span>
+        <span className="text-xs px-2 py-1 rounded-full bg-white/20 text-white">
+          {allCount}
+        </span>
+      </motion.div>
+      
+      {/* Commented out other filters
       {filters.map((filter, index) => (
         <motion.button
           key={`${filter.id}-${index}`}
@@ -50,7 +63,7 @@ export default function FilterTabs({ activeFilter, onFilterChange, media, totalA
           className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium transition-all duration-300 ${
             activeFilter === filter.id
               ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg border border-white/40 dark:bg-transparent dark:text-emerald-300 dark:border dark:border-emerald-500 dark:shadow-none'
-            : 'bg-white/70 text-emerald-700 hover:bg-gold-100 border border-gold-200 dark:bg-transparent dark:text-slate-300 dark:border-slate-600 dark:hover:bg-transparent'
+              : 'bg-white/70 text-emerald-700 hover:bg-gold-100 border border-gold-200 dark:bg-transparent dark:text-slate-300 dark:border-slate-600 dark:hover:bg-transparent'
           } ${
             filter.id === 'all' 
               ? 'w-full sm:w-auto' 
@@ -68,6 +81,7 @@ export default function FilterTabs({ activeFilter, onFilterChange, media, totalA
           </span>
         </motion.button>
       ))}
+      */}
     </div>
   );
 }
