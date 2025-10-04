@@ -5,6 +5,7 @@ import "./globals.css";
 import Layout from "@/components/Layout";
 import { ToastProvider } from "@/components/ui/toast";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SentryProvider } from "@/components/SentryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,13 +30,15 @@ export default function RootLayout({ children, }: Readonly<{ children: React.Rea
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider>
-          <ToastProvider>
-            <Layout>
-              {children}
-            </Layout>
-          </ToastProvider>
-        </ThemeProvider>
+        <SentryProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <Layout>
+                {children}
+              </Layout>
+            </ToastProvider>
+          </ThemeProvider>
+        </SentryProvider>
         <Analytics />
       </body>
     </html>

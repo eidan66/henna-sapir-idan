@@ -9,6 +9,33 @@ import { v4 as uuidv4 } from 'uuid';
 const execAsync = promisify(exec);
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
+// Simple logger for Lambda
+class LambdaLogger {
+  private log(level: string, message: string, context?: any): void {
+    const timestamp = new Date().toISOString();
+    const contextStr = context ? ` | ${JSON.stringify(context)}` : '';
+    console.log(`[${timestamp}] [henna-idan-sapir]: ${level.toUpperCase()}: ${message}${contextStr}`);
+  }
+
+  info(message: string, context?: any): void {
+    this.log('info', message, context);
+  }
+
+  warn(message: string, context?: any): void {
+    this.log('warn', message, context);
+  }
+
+  error(message: string, context?: any): void {
+    this.log('error', message, context);
+  }
+
+  debug(message: string, context?: any): void {
+    this.log('debug', message, context);
+  }
+}
+
+const logger = new LambdaLogger();
+
 interface ProcessingMetadata {
   id: string;
   originalKey: string;
@@ -23,13 +50,21 @@ interface ProcessingMetadata {
 }
 
 export const handler = async (event: S3Event): Promise<void> => {
-  console.log('Processing S3 event:', JSON.stringify(event, null, 2));
+  logger.info('Processing S3 event', {
+    recordCount: event.Records.length,
+    eventSource: event.Records[0]?.eventSource,
+    eventName: event.Records[0]?.eventName,
+  });
 
   for (const record of event.Records) {
     try {
       await processRecord(record);
     } catch (error) {
-      console.error('Error processing record:', error);
+      logger.error('Error processing record', {
+        bucket: record.s3.bucket.name,
+        key: record.s3.object.key,
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Continue processing other records
     }
   }
@@ -98,10 +133,22 @@ async function processRecord(record: S3EventRecord): Promise<void> {
     // Clean up temporary files
     await cleanupTempFiles(inputPath, outputPath, posterPath);
     
-    console.log(`Successfully processed: ${key}`);
+    logger.info('Successfully processed file', {
+      key,
+      fileId,
+      coupleId,
+      type: isVideo ? 'video' : 'image',
+      processingTime: Date.now() - startTime,
+    });
     
   } catch (error) {
-    console.error(`Error processing ${key}:`, error);
+    logger.error('Error processing file', {
+      key,
+      fileId,
+      coupleId,
+      error: error instanceof Error ? error.message : String(error),
+      processingTime: Date.now() - startTime,
+    });
     
     // Create error metadata
     const pathParts = key.split('/');

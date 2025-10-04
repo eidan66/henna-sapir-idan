@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // Access code stored server-side for security
 const ACCESS_CODE = "IDANSAPIR19941993";
@@ -183,7 +184,12 @@ export async function POST(request: NextRequest) {
       const sessionId = createSession(clientIP);
       
       // Log successful access for monitoring
-      console.log(`✅ Successful access from IP: ${clientIP} at ${new Date().toISOString()}, Session: ${sessionId}`);
+      logger.info('Successful access verification', {
+        clientIP,
+        sessionId,
+        userAgent: request.headers.get('user-agent'),
+        timestamp: new Date().toISOString(),
+      });
       
       return NextResponse.json(
         { 
@@ -198,11 +204,21 @@ export async function POST(request: NextRequest) {
       
       // Log failed attempts for monitoring
       const tracker = attemptTracker.get(clientIP);
-      console.log(`❌ Failed access attempt from IP: ${clientIP}, Attempts: ${tracker?.attempts || 1}, Time: ${new Date().toISOString()}`);
+      logger.warn('Failed access attempt', {
+        clientIP,
+        attempts: tracker?.attempts || 1,
+        userAgent: request.headers.get('user-agent'),
+        timestamp: new Date().toISOString(),
+      });
       
       // If this is a suspicious number of attempts, log it prominently
       if (tracker && tracker.attempts >= 3) {
-        console.warn(`🚨 SUSPICIOUS ACTIVITY: IP ${clientIP} has ${tracker.attempts} failed attempts!`);
+        logger.securityEvent('Suspicious access attempts detected', {
+          clientIP,
+          attempts: tracker.attempts,
+          userAgent: request.headers.get('user-agent'),
+          timestamp: new Date().toISOString(),
+        });
       }
       
       return NextResponse.json(
@@ -212,7 +228,12 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Verification error:', error);
+    logger.error('Verification error', error instanceof Error ? error : new Error(String(error)), {
+      clientIP: getClientIP(request),
+      userAgent: request.headers.get('user-agent'),
+      timestamp: new Date().toISOString(),
+    });
+    
     return NextResponse.json(
       { error: 'שגיאה בבדיקת הקוד' },
       { status: 500 }

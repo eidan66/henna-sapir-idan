@@ -2,15 +2,18 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, CheckCircle, AlertCircle, RefreshCw, FileImage, FileVideo } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface UploadProgressIndicatorProps {
   uploads: Array<{
+    file: File;
     status: 'pending' | 'uploading' | 'success' | 'error';
     progress: number;
     error?: string;
   }>;
   isUploading: boolean;
+  onRetry?: (index: number) => void;
 }
 
 const UPLOAD_MESSAGES = [
@@ -54,7 +57,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export default function UploadProgressIndicator({ uploads, isUploading }: UploadProgressIndicatorProps) {
+export default function UploadProgressIndicator({ uploads, isUploading, onRetry }: UploadProgressIndicatorProps) {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [showLongRunning, setShowLongRunning] = useState(false);
 
@@ -176,6 +179,56 @@ export default function UploadProgressIndicator({ uploads, isUploading }: Upload
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
             אל דאגה, אנחנו לא נתקענו! המערכת עובדת על זה... 🚀
           </p>
+        </motion.div>
+      )}
+
+      {/* Failed Files List */}
+      {failedFiles > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-700"
+        >
+          <h4 className="text-sm font-semibold text-red-800 dark:text-red-200 mb-3 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            קבצים שנכשלו ({failedFiles})
+          </h4>
+          <div className="space-y-2">
+            {uploads.map((upload, index) => {
+              if (upload.status !== 'error') return null;
+              
+              return (
+                <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-600">
+                  <div className="flex items-center gap-3">
+                    {upload.file.type.startsWith('image/') ? (
+                      <FileImage className="w-4 h-4 text-red-600" />
+                    ) : (
+                      <FileVideo className="w-4 h-4 text-red-600" />
+                    )}
+                    <div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {upload.file.name}
+                      </div>
+                      <div className="text-xs text-red-600 dark:text-red-400">
+                        {upload.error || 'שגיאה לא ידועה'}
+                      </div>
+                    </div>
+                  </div>
+                  {onRetry && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onRetry(index)}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <RefreshCw className="w-3 h-3 ml-1" />
+                      נסה שוב
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </motion.div>
       )}
     </div>

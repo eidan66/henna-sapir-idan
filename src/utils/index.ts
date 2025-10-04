@@ -124,8 +124,8 @@ export const generateVideoThumbnail = (videoFile: File): Promise<string> => {
       }
     };
 
-    video.onerror = () => {
-      // Don't log to console to avoid spam
+    video.onerror = (e) => {
+      console.warn('Video error during thumbnail generation:', e);
       handleError(new Error('Failed to load video for thumbnail generation'));
     };
 

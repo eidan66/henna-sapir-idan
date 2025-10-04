@@ -25,7 +25,7 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const firstItemRef = useRef<HTMLDivElement>(null);
 
-  const { uploads, uploadFiles, isUploading } = useBulkUploader();
+  const { uploads, uploadFiles, retryUpload, isUploading } = useBulkUploader();
   const { show: showToast } = useToast();
 
   const handleFileSelect = (files: FileList | null) => {
@@ -121,9 +121,9 @@ export default function UploadPage() {
                     <Heart className="w-5 h-5 text-emerald-600" />
                     קבצים שנבחרו
                   </h3>
-                  <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                  {/* <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
                     {selectedFiles.length}/10
-                  </div>
+                  </div> */}
                 </div>
                 <UploadPreview files={selectedFiles} onRemove={removeFile} isUploading={isUploading} />
               </motion.div>
@@ -136,7 +136,7 @@ export default function UploadPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-effect rounded-3xl p-6 border border-gold-200"
               >
-                <UploadProgressIndicator uploads={uploads} isUploading={isUploading} />
+                <UploadProgressIndicator uploads={uploads} isUploading={isUploading} onRetry={retryUpload} />
               </motion.div>
             )}
 
@@ -144,9 +144,9 @@ export default function UploadPage() {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-effect rounded-3xl p-8 border border-gold-200 space-y-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">הוסיפו פרטים</h3>
-                  <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                  {/* <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
                     {selectedFiles.length}/10
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="space-y-4">

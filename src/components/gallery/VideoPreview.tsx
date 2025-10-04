@@ -12,6 +12,8 @@ interface VideoPreviewProps {
   onError?: () => void;
   onLoad?: () => void;
   fixedAspect?: boolean; // if true, wrap with aspect-video
+  showControls?: boolean; // if true, show video controls
+  autoPlay?: boolean; // if true, autoplay video
 }
 
 export default function VideoPreview({ 
@@ -22,9 +24,11 @@ export default function VideoPreview({
   onError,
   onLoad,
   fixedAspect = true,
+  showControls = false,
+  autoPlay = false,
 }: VideoPreviewProps) {
   const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(!isMobile());
+  const [isLoading, setIsLoading] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
   const [posterVisible, setPosterVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
@@ -60,7 +64,7 @@ export default function VideoPreview({
   }, []);
 
   const handleVideoError = () => {
-    console.debug('Video failed to load:', mp4Url);
+    console.warn('Video failed to load:', mp4Url);
     setHasError(true);
     setIsLoading(false);
     setShowFallback(!posterUrl);
@@ -102,15 +106,15 @@ export default function VideoPreview({
           ref={videoRef}
           playsInline
           {...({ 'webkit-playsinline': 'true' } as Record<string, string>)}
-          muted
-          loop
-          autoPlay
+          muted={!showControls}
+          loop={!showControls}
+          autoPlay={autoPlay}
           preload="metadata"
           poster={posterUrl}
           disableRemotePlayback
-          controls={false}
+          controls={showControls}
           className="w-full h-auto object-cover"
-          onLoadStart={() => !isMobile() && setIsLoading(true)}
+          onLoadStart={() => setIsLoading(true)}
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handleVideoError}
@@ -120,7 +124,7 @@ export default function VideoPreview({
         </video>
       )}
 
-      {isLoading && !showFallback && !isMobile() && (
+      {isLoading && !showFallback && (
         <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
         </div>

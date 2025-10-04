@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import type { WeddingMediaItem } from "@/Entities/WeddingMedia";
+import VideoPreview from "./VideoPreview";
 
 interface MediaViewerProps {
   media: WeddingMediaItem | null;
@@ -162,20 +163,18 @@ export default function MediaViewer({
                 style={{ maxHeight: '80dvh' }}
               />
             ) : (
-              <video
-                src={media.media_url}
-                controls
+              <VideoPreview
+                mp4Url={media.media_url}
+                posterUrl={media.thumbnail_url || ""}
                 className="w-full h-full object-contain rounded-2xl shadow-2xl"
-                autoPlay
-                playsInline
-                preload="metadata"
-                poster={media.thumbnail_url}
-                onLoadedData={(e) => {
-                  // Ensure video shows first frame
-                  const video = e.target as HTMLVideoElement;
-                  if (video.readyState >= 2) {
-                    video.currentTime = 0;
-                  }
+                fixedAspect={false}
+                showControls={true}
+                autoPlay={false}
+                onLoad={() => {
+                  console.log('Video loaded successfully in MediaViewer');
+                }}
+                onError={() => {
+                  console.warn('Video failed to load in MediaViewer');
                 }}
               />
             )}

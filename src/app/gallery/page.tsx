@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Plus, Heart, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { logger } from "@/lib/logger";
 
 import { createPageUrl } from "@/utils";
 import MediaGrid from "@/components/gallery/MediaGrid";
@@ -27,6 +28,20 @@ export default function GalleryPage() {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [totals, setTotals] = useState<{ all?: number; photos?: number; videos?: number }>({});
+
+  // Test Sentry logging
+  useEffect(() => {
+    logger.info('Gallery page loaded', {
+      component: 'GalleryPage',
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Test error logging
+    logger.error('Test error for Sentry', new Error('This is a test error'), {
+      test: true,
+      component: 'GalleryPage',
+    });
+  }, []);
 
   const loader = useRef<HTMLDivElement | null>(null);
 

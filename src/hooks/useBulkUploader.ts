@@ -4,6 +4,7 @@ import { WeddingMedia } from '../Entities/WeddingMedia';
 import type { WeddingMediaItem } from '../Entities/WeddingMedia';
 import { generateVideoThumbnail, isMobile } from '../utils';
 import { compressImage, replaceExtension } from '../utils/compress';
+import { logger } from '../lib/logger';
 
 async function asyncPool<T, R>(
   poolLimit: number,
@@ -54,6 +55,11 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
       return await fn();
     } catch (err) {
       lastErr = err;
+      logger.warn(`Retry attempt ${i + 1}/${attempts}`, {
+        error: err instanceof Error ? err.message : String(err),
+        attempt: i + 1,
+        totalAttempts: attempts,
+      });
       await new Promise(r => setTimeout(r, 300 * (i + 1)));
     }
   }
@@ -62,36 +68,73 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
 }
 
 async function presignSingle(file: File, caption: string, uploaderName: string, signal: AbortSignal): Promise<{ url: string }> {
-  const res = await fetch(`${API_BASE}/upload-url`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filename: file.name,
-      filetype: file.type,
-      filesize: file.size,
-      title: caption || "",
-      uploaderName: uploaderName || ""
-    }),
-    signal,
+  logger.info('Attempting to presign single file', {
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    caption,
+    uploaderName,
   });
+  
+  try {
+    const res = await fetch(`${API_BASE}/upload-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: file.name,
+        filetype: file.type,
+        filesize: file.size,
+        title: caption || "",
+        uploaderName: uploaderName || ""
+      }),
+      signal,
+    });
   if (!res.ok) {
+    console.error('Failed to presign single file:', res.status, res.statusText);
     let code: string | undefined; let message: string | undefined;
-    try { const data = await res.json(); code = (data as { code?: string }).code; message = (data as { message?: string }).message; } catch {}
+    try { 
+      const data = await res.json(); 
+      code = (data as { code?: string }).code; 
+      message = (data as { message?: string }).message; 
+      console.error('Error response:', data);
+    } catch (e) {
+      console.error('Failed to parse error response:', e);
+    }
     throw new Error(`[${code || 'ERROR'}] ${message || 'Failed to get upload URL'}`);
   }
   return res.json() as Promise<{ url: string }>;
+  } catch (error) {
+    console.error('Network error in presignSingle:', error);
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('Network error: Unable to connect to server. Please check your internet connection and try again.');
+    }
+    throw error;
+  }
 }
 
 async function presignBatch(files: File[], caption: string, uploaderName: string, signal: AbortSignal): Promise<string[]> {
-  const payload = {
-    files: files.map(f => ({ filename: f.name, filetype: f.type, filesize: f.size, title: caption || "", uploaderName: uploaderName || "" }))
-  };
-  const res = await fetch(`${API_BASE}/uploads/presign/batch`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal
-  });
-  if (!res.ok) throw new Error('Batch presign failed');
-  const data = await res.json() as { urls: string[] };
-  return data.urls;
+  console.log('Attempting to presign batch of files:', files.length, 'API_BASE:', API_BASE);
+  
+  try {
+    const payload = {
+      files: files.map(f => ({ filename: f.name, filetype: f.type, filesize: f.size, title: caption || "", uploaderName: uploaderName || "" }))
+    };
+    const res = await fetch(`${API_BASE}/uploads/presign/batch`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal
+    });
+    if (!res.ok) {
+      console.error('Batch presign failed:', res.status, res.statusText);
+      throw new Error('Batch presign failed');
+    }
+    const data = await res.json() as { urls: string[] };
+    return data.urls;
+  } catch (error) {
+    console.error('Network error in presignBatch:', error);
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('Network error: Unable to connect to server. Please check your internet connection and try again.');
+    }
+    throw error;
+  }
 }
 
 async function uploadPutWithRetry(url: string, file: File, idx: number, setUploads: React.Dispatch<React.SetStateAction<FileUploadState[]>>): Promise<void> {
@@ -197,7 +240,11 @@ export const useBulkUploader = () => {
         if (file.type.startsWith('video/') && !isMobile()) {
           try {
             thumbnailUrl = await generateVideoThumbnail(file);
-          } catch {}
+            console.log(`Generated thumbnail for video: ${file.name}`);
+          } catch (error) {
+            console.warn(`Failed to generate thumbnail for ${file.name}:`, error);
+            // Continue without thumbnail - don't fail the entire upload
+          }
         }
 
         // 4. Create media item in backend after S3 upload succeeds
@@ -216,6 +263,7 @@ export const useBulkUploader = () => {
           )
           );
       } catch (err) {
+        console.error(`Upload failed for file ${originalFile.name} (${originalFile.type}):`, err);
         setUploads(prev =>
           prev.map((u, i) =>
             i === idx
@@ -231,9 +279,72 @@ export const useBulkUploader = () => {
     uploadControllers.current.forEach(controller => controller?.abort());
   };
 
+  const retryUpload = async (index: number) => {
+    const upload = uploads[index];
+    if (!upload || upload.status !== 'error') return;
 
+    const controller = new AbortController();
+    uploadControllers.current[index] = controller;
+
+    setUploads(prev => prev.map((u, i) =>
+      i === index ? { ...u, status: 'uploading' as UploadStatus, progress: 0, error: undefined } : u
+    ));
+
+    try {
+      // Compress images on client to accelerate uploads massively
+      let file = upload.file;
+      if (file.type.startsWith('image/')) {
+        try {
+          const blob = await compressImage(file, { maxDimension: 2048, quality: 0.72 });
+          const newName = replaceExtension(file.name, '.jpg');
+          file = new File([blob], newName, { type: 'image/jpeg' });
+        } catch {
+          // If compression fails, fall back to original
+        }
+      }
+
+      // 1. Get pre-signed URL (with retry)
+      const single = await withRetry(() => presignSingle(file, '', '', controller.signal));
+      const url = single.url;
+
+      // 2. Upload to S3 with progress (and timeout)
+      await uploadPutWithRetry(url, file, index, setUploads);
+
+      // 3. Generate thumbnail for videos (skip on mobile to keep UX snappy)
+      let thumbnailUrl: string | undefined;
+      if (file.type.startsWith('video/') && !isMobile()) {
+        try {
+          thumbnailUrl = await generateVideoThumbnail(file);
+        } catch {}
+      }
+
+      // 4. Create media item in backend after S3 upload succeeds
+      const mediaParams = {
+        title: '',
+        media_url: url.split('?')[0],
+        media_type: (file.type.startsWith('image/') ? 'photo' : 'video') as 'photo' | 'video',
+        uploader_name: "אורח אנונימי",
+        thumbnail_url: thumbnailUrl
+      };
+      const createdMedia = await WeddingMedia.create(mediaParams);
+
+      setUploads(prev =>
+        prev.map((u, i) =>
+          i === index ? { ...u, status: 'success' as UploadStatus, progress: 100, mediaItem: createdMedia } : u
+        )
+      );
+    } catch (err) {
+      setUploads(prev =>
+        prev.map((u, i) =>
+          i === index
+            ? { ...u, status: 'error' as UploadStatus, error: (err as Error).message || 'An error occurred' }
+            : u
+        )
+      );
+    }
+  };
 
   const isUploading = uploads.some(u => u.status === 'uploading' || u.status === 'pending');
 
-  return { uploads, uploadFiles, cancelUploads, isUploading };
+  return { uploads, uploadFiles, cancelUploads, retryUpload, isUploading };
 };

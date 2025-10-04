@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
     const commands = files.map((f) => {
       const typeValid = allowedTypes.includes(f.filetype) || f.filetype === 'image/jpeg';
       if (!typeValid) throw new Error(`Unsupported type: ${f.filetype}`);
-      const MAX = 350 * 1024 * 1024;
-      if (f.filesize > MAX) throw new Error(`File too large: ${f.filename}`);
+      // const MAX = 350 * 1024 * 1024; - COMMENTED OUT FOR UNLIMITED UPLOADS
+      // if (f.filesize > MAX) throw new Error(`File too large: ${f.filename}`);
       const ext = f.filename.split('.').pop();
       const uniqueFilename = `${uuidv4()}.${ext}`;
       const key = `henna-uploads/${uniqueFilename}`;
