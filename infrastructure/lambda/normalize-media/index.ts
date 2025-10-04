@@ -1,10 +1,9 @@
 import { S3Event, S3EventRecord } from 'aws-lambda';
-import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, unlink, readFile } from 'fs/promises';
 import { join } from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
 const execAsync = promisify(exec);
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
@@ -14,7 +13,7 @@ class LambdaLogger {
   private log(level: string, message: string, context?: any): void {
     const timestamp = new Date().toISOString();
     const contextStr = context ? ` | ${JSON.stringify(context)}` : '';
-    console.log(`[${timestamp}] [henna-idan-sapir]: ${level.toUpperCase()}: ${message}${contextStr}`);
+    console.log(`[${timestamp}] [${process.env.SENTRY_PROJECT}]: ${level.toUpperCase()}: ${message}${contextStr}`);
   }
 
   info(message: string, context?: any): void {
@@ -71,6 +70,7 @@ export const handler = async (event: S3Event): Promise<void> => {
 };
 
 async function processRecord(record: S3EventRecord): Promise<void> {
+  const startTime = Date.now();
   const bucket = record.s3.bucket.name;
   const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
   
@@ -88,7 +88,6 @@ async function processRecord(record: S3EventRecord): Promise<void> {
     const coupleId = pathParts[0];
     const fileName = pathParts[pathParts.length - 1];
     const fileId = fileName.split('.')[0];
-    const extension = fileName.split('.').pop()?.toLowerCase();
     
     console.log(`Processing for couple: ${coupleId}, file: ${fileName}`);
 
@@ -111,7 +110,6 @@ async function processRecord(record: S3EventRecord): Promise<void> {
         outputPath, 
         posterPath, 
         fileId, 
-        coupleId, 
         key,
         fileInfo
       );
@@ -121,7 +119,6 @@ async function processRecord(record: S3EventRecord): Promise<void> {
         outputPath, 
         posterPath, 
         fileId, 
-        coupleId, 
         key,
         fileInfo
       );
@@ -142,6 +139,12 @@ async function processRecord(record: S3EventRecord): Promise<void> {
     });
     
   } catch (error) {
+    // Create error metadata
+    const pathParts = key.split('/');
+    const coupleId = pathParts[0];
+    const fileName = pathParts[pathParts.length - 1];
+    const fileId = fileName.split('.')[0];
+    
     logger.error('Error processing file', {
       key,
       fileId,
@@ -149,12 +152,6 @@ async function processRecord(record: S3EventRecord): Promise<void> {
       error: error instanceof Error ? error.message : String(error),
       processingTime: Date.now() - startTime,
     });
-    
-    // Create error metadata
-    const pathParts = key.split('/');
-    const coupleId = pathParts[0];
-    const fileName = pathParts[pathParts.length - 1];
-    const fileId = fileName.split('.')[0];
     
     const errorMetadata: ProcessingMetadata = {
       id: fileId,
@@ -203,7 +200,6 @@ async function detectFileType(filePath: string): Promise<{ type: string; width?:
     const info = JSON.parse(stdout);
     
     const videoStream = info.streams?.find((s: any) => s.codec_type === 'video');
-    const audioStream = info.streams?.find((s: any) => s.codec_type === 'audio');
     
     return {
       type: info.format?.format_name || 'unknown',
@@ -222,7 +218,6 @@ async function processVideo(
   outputPath: string,
   posterPath: string,
   fileId: string,
-  coupleId: string,
   originalKey: string,
   fileInfo: any
 ): Promise<ProcessingMetadata> {
@@ -276,7 +271,6 @@ async function processImage(
   outputPath: string,
   posterPath: string,
   fileId: string,
-  coupleId: string,
   originalKey: string,
   fileInfo: any
 ): Promise<ProcessingMetadata> {

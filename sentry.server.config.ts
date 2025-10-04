@@ -1,4 +1,8 @@
-import * as Sentry from '@sentry/nextjs';
+// This file configures the initialization of Sentry on the server.
+// The config you add here will be used whenever the server handles a request.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
+import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -7,17 +11,14 @@ Sentry.init({
   tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
   
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: process.env.NODE_ENV === 'development',
+  debug: false, // Disabled to prevent console warnings
   
-  // Enable logs
-  _experiments: {
-    enableLogs: true,
-  },
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
   
   // Integrations
   integrations: [
-    // Send console.log, console.warn, and console.error calls as logs to Sentry
-    Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
+    // Removed consoleLoggingIntegration to prevent infinite loops
   ],
   
   // Set environment
@@ -30,12 +31,6 @@ Sentry.init({
       app: 'henna-gallery',
     },
   },
-  
-  // Capture unhandled promise rejections
-  captureUnhandledRejections: true,
-  
-  // Capture uncaught exceptions
-  captureUncaughtException: true,
   
   // Custom error filtering
   beforeSend(event, hint) {
@@ -57,5 +52,20 @@ Sentry.init({
     };
     
     return event;
+  },
+  
+  // Custom log filtering
+  beforeSendLog(log) {
+    // In development, send all logs
+    if (process.env.NODE_ENV === 'development') {
+      return log;
+    }
+    
+    // In production, filter out debug logs
+    if (log.level === 'debug') {
+      return null;
+    }
+    
+    return log;
   },
 });

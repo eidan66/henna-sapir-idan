@@ -26,71 +26,53 @@ class Logger {
   private formatMessage(level: LogLevel, message: string, context?: LogContext): string {
     const timestamp = new Date().toISOString();
     const contextStr = context ? ` | ${JSON.stringify(context)}` : '';
-    return `[${timestamp}] [henna-idan-sapir]: ${level.toUpperCase()}: ${message}${contextStr}`;
+    return `[${timestamp}] [${process.env.NEXT_PUBLIC_SENTRY_PROJECT}]: ${level.toUpperCase()}: ${message}${contextStr}`;
   }
 
   private logToConsole(level: LogLevel, message: string, context?: LogContext): void {
-    if (this.isDevelopment) {
-      const formattedMessage = this.formatMessage(level, message, context);
-      
-      switch (level) {
-        case LogLevel.DEBUG:
-          console.debug(formattedMessage);
-          break;
-        case LogLevel.INFO:
-          console.info(formattedMessage);
-          break;
-        case LogLevel.WARN:
-          console.warn(formattedMessage);
-          break;
-        case LogLevel.ERROR:
-          console.error(formattedMessage);
-          break;
-      }
-    }
+    // Disabled console logging to prevent infinite loops with Sentry
+    // Only use Sentry.logger for structured logging
   }
 
   private logToSentry(level: LogLevel, message: string, context?: LogContext, error?: Error): void {
-    if (this.isProduction) {
-      // Use Sentry's built-in logger
-      const { logger: sentryLogger } = Sentry;
-      
-      // Add context to Sentry scope
-      Sentry.withScope((scope) => {
-        if (context) {
-          Object.keys(context).forEach(key => {
-            scope.setTag(key, context[key]);
-          });
-        }
-        
-        // Add breadcrumb
-        scope.addBreadcrumb({
-          message,
-          level: level as any,
-          timestamp: Date.now() / 1000,
+    // Use Sentry's built-in logger for all environments
+    const { logger: sentryLogger } = Sentry;
+    
+    // Add context to Sentry scope
+    Sentry.withScope((scope) => {
+      if (context) {
+        Object.keys(context).forEach(key => {
+          scope.setTag(key, context[key]);
         });
-        
-        if (error) {
-          Sentry.captureException(error);
-        } else {
-          // Use Sentry logger for structured logging
-          switch (level) {
-            case LogLevel.DEBUG:
-              sentryLogger.debug(message, context);
-              break;
-            case LogLevel.INFO:
-              sentryLogger.info(message, context);
-              break;
-            case LogLevel.WARN:
-              sentryLogger.warn(message, context);
-              break;
-            case LogLevel.ERROR:
-              sentryLogger.error(message, context);
-              break;
-          }
-        }
+      }
+      
+      // Add breadcrumb
+      scope.addBreadcrumb({
+        message,
+        level: level as any,
+        timestamp: Date.now() / 1000,
       });
-    }
+      
+      if (error) {
+        Sentry.captureException(error);
+      } else {
+        // Use Sentry logger for structured logging
+        switch (level) {
+          case LogLevel.DEBUG:
+            sentryLogger.debug(message, context);
+            break;
+          case LogLevel.INFO:
+            sentryLogger.info(message, context);
+            break;
+          case LogLevel.WARN:
+            sentryLogger.warn(message, context);
+            break;
+          case LogLevel.ERROR:
+            sentryLogger.error(message, context);
+            break;
+        }
+      }
+    });
   }
 
   debug(message: string, context?: LogContext): void {
@@ -227,7 +209,7 @@ class Logger {
   ): Promise<T> {
     return this.startSpan(
       'http.client',
-      `[henna-idan-sapir]: ${method} ${url}`,
+      `[${process.env.SENTRY_PROJECT}]: ${method} ${url}`,
       async (span) => {
         const startTime = Date.now();
         try {
@@ -257,7 +239,7 @@ class Logger {
   traceUserAction<T>(action: string, callback: () => T, context?: LogContext): T {
     return this.startSpan(
       'ui.action',
-      `[henna-idan-sapir]: User Action: ${action}`,
+      `[${process.env.SENTRY_PROJECT}]: User Action: ${action}`,
       (span) => {
         span.setAttribute('action', action);
         const result = callback();
@@ -272,7 +254,7 @@ class Logger {
   async traceUpload<T>(fileId: string, callback: () => Promise<T>, context?: LogContext): Promise<T> {
     return this.startSpan(
       'file.upload',
-      `[henna-idan-sapir]: Upload: ${fileId}`,
+      `[${process.env.SENTRY_PROJECT}]: Upload: ${fileId}`,
       async (span) => {
         span.setAttribute('fileId', fileId);
         const startTime = Date.now();

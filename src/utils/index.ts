@@ -154,7 +154,6 @@ export const generateVideoThumbnail = (videoFile: File): Promise<string> => {
  * Check if the device is iOS
  */
 export const isIOS = (): boolean => {
-  if (typeof window === 'undefined') return false;
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 };
 
@@ -162,6 +161,5 @@ export const isIOS = (): boolean => {
  * Check if the device is mobile
  */
 export const isMobile = (): boolean => {
-  if (typeof window === 'undefined') return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }; 

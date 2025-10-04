@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Lock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { WeddingMedia } from '@/Entities/WeddingMedia';
+import { logger } from '@/lib/logger';
 
 export default function DownloadPage() {
   const [accessCode, setAccessCode] = useState('');
@@ -15,26 +16,46 @@ export default function DownloadPage() {
   const [hasDownloadedOnce, setHasDownloadedOnce] = useState(false);
   const [isLoadingFileCount, setIsLoadingFileCount] = useState(false);
 
+  // Log page load
+  useEffect(() => {
+    logger.info('Download page loaded', {
+      component: 'DownloadPage',
+      timestamp: new Date().toISOString(),
+    });
+  }, []);
+
   // Check if enough time has passed since the henna (25 hours)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const hennaDate = new Date('2025-09-18T20:00:00+03:00');
-      const downloadDate = new Date(hennaDate.getTime() + (25 * 60 * 60 * 1000));
-      const now = new Date();
+    const hennaDate = new Date('2025-09-18T20:00:00+03:00');
+    const downloadDate = new Date(hennaDate.getTime() + (25 * 60 * 60 * 1000));
+    const now = new Date();
 
-      if (now < downloadDate) {
-        // Redirect to gallery if not enough time has passed
-        window.location.href = '/gallery';
-      }
+    if (now < downloadDate) {
+      logger.info('Download page accessed too early - redirecting to gallery', {
+        component: 'DownloadPage',
+        hennaDate: hennaDate.toISOString(),
+        downloadDate: downloadDate.toISOString(),
+        currentTime: now.toISOString(),
+      });
+      // Redirect to gallery if not enough time has passed
+      window.location.href = '/gallery';
     }
   }, []);
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    logger.userAction('Download access code submitted', {
+      component: 'DownloadPage',
+      hasAccessCode: !!accessCode.trim(),
+    });
+    
     // Client-side validation
     if (!accessCode.trim()) {
       setError('אנא הזינו קוד גישה');
+      logger.warn('Download access code validation failed - empty code', {
+        component: 'DownloadPage',
+      });
       return;
     }
     
@@ -42,6 +63,11 @@ export default function DownloadPage() {
     setError('');
     
     try {
+      logger.apiRequest('POST', '/api/download/verify', {
+        component: 'DownloadPage',
+        accessCodeLength: accessCode.length,
+      });
+      
       // Verify access code server-side
       const response = await fetch('/api/download/verify', {
         method: 'POST',

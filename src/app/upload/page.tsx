@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createPageUrl } from "@/utils";
 import { Heart } from "lucide-react";
 import { motion } from "framer-motion";
+import { logger } from "@/lib/logger";
 
 import UploadZone from "../../components/upload/UploadZone";
 import UploadPreview from "../../components/upload/UploadPreview";
@@ -28,9 +29,25 @@ export default function UploadPage() {
   const { uploads, uploadFiles, retryUpload, isUploading } = useBulkUploader();
   const { show: showToast } = useToast();
 
+  // Log page load
+  useEffect(() => {
+    logger.info('Upload page loaded', {
+      component: 'UploadPage',
+      timestamp: new Date().toISOString(),
+    });
+  }, []);
+
   const handleFileSelect = (files: FileList | null) => {
     if (!files) return;
     const validFiles = Array.from(files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'));
+    
+    logger.userAction('Files selected for upload', {
+      component: 'UploadPage',
+      totalFiles: files.length,
+      validFiles: validFiles.length,
+      fileTypes: validFiles.map(f => f.type),
+      fileSizes: validFiles.map(f => f.size),
+    });
     
     // Check if adding these files would exceed the limit - COMMENTED OUT FOR UNLIMITED FILES
     // const currentCount = selectedFiles.length;

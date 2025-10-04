@@ -15,7 +15,7 @@ import MediaViewer from "@/components/gallery/MediaViewer";
 import FilterTabs from "@/components/gallery/FilterTabs";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 
-const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 20;
 
 export default function GalleryPage() {
   const [media, setMedia] = useState<WeddingMediaItem[]>([]);
@@ -28,24 +28,23 @@ export default function GalleryPage() {
   const [viewerIndex, setViewerIndex] = useState(0);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [totals, setTotals] = useState<{ all?: number; photos?: number; videos?: number }>({});
-
-  // Test Sentry logging
+  // Log page load (only once)
   useEffect(() => {
     logger.info('Gallery page loaded', {
       component: 'GalleryPage',
       timestamp: new Date().toISOString(),
     });
-    
-    // Test error logging
-    logger.error('Test error for Sentry', new Error('This is a test error'), {
-      test: true,
-      component: 'GalleryPage',
-    });
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once
 
   const loader = useRef<HTMLDivElement | null>(null);
 
   const fetchMedia = useCallback(async (pageToLoad: number) => {
+    logger.info('Fetching media data', {
+      component: 'GalleryPage',
+      page: pageToLoad,
+      itemsPerPage: ITEMS_PER_PAGE,
+    });
+    
     if (pageToLoad === 1) {
       setIsLoadingInitial(true);
     } else {
@@ -54,6 +53,12 @@ export default function GalleryPage() {
 
     try {
       const data = await WeddingMedia.list("-created_date", pageToLoad, ITEMS_PER_PAGE);
+
+      logger.info('Media data fetched successfully', {
+        component: 'GalleryPage',
+        page: pageToLoad,
+        itemsCount: data.items.length,
+      });
 
       const mappedMedia: WeddingMediaItem[] = data.items.map(item => ({
         id: item.id,
@@ -151,6 +156,12 @@ export default function GalleryPage() {
 
   // Prevent scroll jump when filtering
   const handleFilterChange = useCallback((filter: "all" | "photo" | "video") => {
+    logger.userAction('Filter changed', {
+      component: 'GalleryPage',
+      newFilter: filter,
+      previousFilter: activeFilter,
+    });
+    
     const currentScrollPosition = window.pageYOffset;
     setActiveFilter(filter);
     
@@ -158,7 +169,7 @@ export default function GalleryPage() {
     requestAnimationFrame(() => {
       window.scrollTo(0, currentScrollPosition);
     });
-  }, []);
+  }, [activeFilter]);
 
   return (
     <div className="min-h-screen henna-gradient">

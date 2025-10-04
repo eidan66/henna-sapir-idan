@@ -23,21 +23,11 @@ export function SentryProvider({ children }: SentryProviderProps) {
 
     // Log client-side initialization
     logger.info('Sentry client initialized', {
-      userId,
-      sessionId,
+      userId: userId || undefined,
+      sessionId: sessionId || undefined,
       userAgent: navigator.userAgent,
       url: window.location.href,
     });
-
-    // Test Sentry directly
-    console.log('Testing Sentry - this should appear in Sentry logs');
-    console.warn('Testing Sentry warning - this should appear in Sentry logs');
-    console.error('Testing Sentry error - this should appear in Sentry logs');
-
-    // Test Sentry captureMessage
-    Sentry.captureMessage('Test message from SentryProvider', 'info');
-    Sentry.captureMessage('Test warning from SentryProvider', 'warning');
-    Sentry.captureMessage('Test error from SentryProvider', 'error');
 
     // Global error handler for unhandled errors
     const handleError = (event: ErrorEvent) => {

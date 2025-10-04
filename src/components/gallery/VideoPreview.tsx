@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Play } from "lucide-react";
 import VideoPlaceholder from "./VideoPlaceholder";
 import { isMobile } from "@/utils";
+import { logger } from "@/lib/logger";
 
 interface VideoPreviewProps {
   mp4Url: string;
@@ -64,7 +65,11 @@ export default function VideoPreview({
   }, []);
 
   const handleVideoError = () => {
-    console.warn('Video failed to load:', mp4Url);
+    logger.warn('Video failed to load', {
+      component: 'VideoPreview',
+      mp4Url: mp4Url,
+      hasPoster: !!posterUrl,
+    });
     setHasError(true);
     setIsLoading(false);
     setShowFallback(!posterUrl);

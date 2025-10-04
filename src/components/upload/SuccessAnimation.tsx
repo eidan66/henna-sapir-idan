@@ -15,24 +15,22 @@ export default function SuccessAnimation() {
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== 'undefined') {
-      window.scrollTo(0, 0);
-      
+    window.scrollTo(0, 0);
+    
+    setWindowDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+
+    const handleResize = () => {
       setWindowDimensions({
         width: window.innerWidth,
         height: window.innerHeight,
       });
+    };
 
-      const handleResize = () => {
-        setWindowDimensions({
-          width: window.innerWidth,
-          height: window.innerHeight,
-        });
-      };
-
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [pathname]);
 
   return (

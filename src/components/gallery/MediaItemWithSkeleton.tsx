@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { User } from 'lucide-react';
 import type { WeddingMediaItem } from '@/Entities/WeddingMedia';
 import VideoPreview from './VideoPreview';
+import { logger } from '@/lib/logger';
 
 interface MediaItemWithSkeletonProps {
   item: WeddingMediaItem;
@@ -24,10 +25,8 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
     let immediateLoadCount = 6;
     
     // Check if mobile or desktop (only on client side)
-    if (typeof window !== 'undefined') {
-      const isMobile = window.innerWidth < 768;
-      immediateLoadCount = isMobile ? 6 : 12;
-    }
+    const isMobile = window.innerWidth < 768;
+    immediateLoadCount = isMobile ? 6 : 12;
     
     // Load first items immediately for better UX
     if (index < immediateLoadCount) {
@@ -44,7 +43,7 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
         }
       },
       {
-        rootMargin: '100px', // Start loading 100px before the element is visible
+        rootMargin: '50px', // Reduced from 100px to minimize unnecessary requests
         threshold: 0.1
       }
     );
@@ -68,11 +67,16 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
   const handleMediaLoad = () => {
     setMediaLoaded(true);
     
-    // Preload next few images for better performance
-    if (index < 20 && typeof window !== 'undefined') { // Only preload first 20 images
-      const nextImage = new window.Image();
-      nextImage.src = item.media_url;
-    }
+    logger.debug('Media item loaded', {
+      component: 'MediaItemWithSkeleton',
+      mediaId: item.id,
+      mediaType: item.media_type,
+      index: index,
+      url: item.media_url,
+    });
+    
+    // Remove preloading to reduce unnecessary requests
+    // Preloading was causing spam of Amazon S3 calls
   };
 
   const handleMediaError = () => {

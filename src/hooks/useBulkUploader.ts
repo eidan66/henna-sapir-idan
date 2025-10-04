@@ -36,6 +36,8 @@ export interface FileUploadState {
   progress: number;
   error?: string;
   mediaItem?: WeddingMediaItem;
+  uploaderName?: string;
+  caption?: string;
 }
 
 function resolveConcurrency(): number {
@@ -145,12 +147,31 @@ async function uploadPutWithRetry(url: string, file: File, idx: number, setUploa
     xhr.timeout = 180_000;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
-        setUploads(prev => prev.map((u, i) => i === idx ? { ...u, progress: Math.round((event.loaded / event.total) * 100) } : u));
+        const progress = Math.round((event.loaded / event.total) * 100);
+        setUploads(prev => prev.map((u, i) => i === idx ? { ...u, progress } : u));
+        
+        // Log progress every 25%
+        if (progress % 25 === 0) {
+          logger.uploadProgress(file.name, progress, {
+            fileName: file.name,
+            fileSize: file.size,
+            loaded: event.loaded,
+            total: event.total,
+          });
+        }
       }
     };
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload failed (${xhr.status})`));
+      if (xhr.status >= 200 && xhr.status < 300) {
+        logger.info('S3 PUT request completed successfully', {
+          fileName: file.name,
+          status: xhr.status,
+          fileSize: file.size,
+        });
+        resolve();
+      } else {
+        reject(new Error(`Upload failed (${xhr.status})`));
+      }
     };
     xhr.onerror = () => reject(new Error('Network error during upload'));
     xhr.ontimeout = () => reject(new Error('Upload timeout'));
@@ -164,9 +185,22 @@ async function uploadPutWithRetry(url: string, file: File, idx: number, setUploa
       return;
     } catch (err) {
       lastErr = err;
+      logger.warn('S3 upload attempt failed', {
+        fileName: file.name,
+        attempt: t + 1,
+        maxAttempts: 3,
+        error: err instanceof Error ? err.message : String(err),
+      });
       if (t < 2) await new Promise(r => setTimeout(r, 500 * Math.pow(2, t))); // backoff 0.5s,1s
     }
   }
+  
+  logger.error('All S3 upload attempts failed', lastErr instanceof Error ? lastErr : new Error(String(lastErr)), {
+    fileName: file.name,
+    fileSize: file.size,
+    maxAttempts: 3,
+  });
+  
   throw lastErr instanceof Error ? lastErr : new Error('PUT failed');
 }
 
@@ -177,6 +211,15 @@ export const useBulkUploader = () => {
 
 
   const uploadFiles = async (files: File[], uploaderName: string, caption: string) => {
+    // Log upload start
+    logger.info('Starting bulk upload process', {
+      fileCount: files.length,
+      uploaderName,
+      caption: caption || 'No caption',
+      totalSize: files.reduce((sum, file) => sum + file.size, 0),
+      fileTypes: files.map(f => f.type),
+    });
+
     // Reset upload controllers
     uploadControllers.current = [];
     
@@ -184,7 +227,13 @@ export const useBulkUploader = () => {
     setUploads([]);
     
     // Create initial upload states
-    const initialUploads = files.map(file => ({ file, status: 'pending' as UploadStatus, progress: 0 }));
+    const initialUploads = files.map(file => ({ 
+      file, 
+      status: 'pending' as UploadStatus, 
+      progress: 0,
+      uploaderName,
+      caption,
+    }));
     setUploads(initialUploads);
 
     const concurrency = resolveConcurrency();
@@ -203,6 +252,15 @@ export const useBulkUploader = () => {
       const controller = new AbortController();
       uploadControllers.current[idx] = controller;
 
+      // Log individual file upload start
+      logger.info('Starting file upload', {
+        fileName: originalFile.name,
+        fileSize: originalFile.size,
+        fileType: originalFile.type,
+        fileIndex: idx,
+        uploaderName,
+      });
+
       setUploads(prev => {
         const newUploads = prev.map((u, i) =>
           i === idx ? { ...u, status: 'uploading' as UploadStatus, progress: 0 } : u
@@ -215,10 +273,26 @@ export const useBulkUploader = () => {
         let file = originalFile;
         if (file.type.startsWith('image/')) {
           try {
+            logger.info('Compressing image', {
+              fileName: originalFile.name,
+              originalSize: originalFile.size,
+              fileType: originalFile.type,
+            });
+            
             const blob = await compressImage(file, { maxDimension: 2048, quality: 0.72 });
             const newName = replaceExtension(file.name, '.jpg');
             file = new File([blob], newName, { type: 'image/jpeg' });
-          } catch {
+            
+            logger.info('Image compression completed', {
+              fileName: newName,
+              compressedSize: file.size,
+              compressionRatio: Math.round((1 - file.size / originalFile.size) * 100),
+            });
+          } catch (error) {
+            logger.warn('Image compression failed, using original', {
+              fileName: originalFile.name,
+              error: error instanceof Error ? error.message : String(error),
+            });
             // If compression fails, fall back to original
           }
         }
@@ -227,27 +301,71 @@ export const useBulkUploader = () => {
         let url: string;
         if (batchUrls && batchUrls[idx]) {
           url = batchUrls[idx];
+          logger.info('Using batch presigned URL', {
+            fileName: file.name,
+            urlLength: url.length,
+          });
         } else {
+          logger.info('Getting single presigned URL', {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+          });
           const single = await withRetry(() => presignSingle(file, caption, uploaderName, controller.signal));
           url = single.url;
+          logger.info('Presigned URL obtained', {
+            fileName: file.name,
+            urlLength: url.length,
+          });
         }
 
         // 2. Upload to S3 with progress (and timeout)
+        logger.info('Starting S3 upload', {
+          fileName: file.name,
+          fileSize: file.size,
+          urlLength: url.length,
+        });
+        
         await uploadPutWithRetry(url, file, idx, setUploads);
+        
+        logger.info('S3 upload completed', {
+          fileName: file.name,
+          fileSize: file.size,
+        });
 
         // 3. Generate thumbnail for videos (skip on mobile to keep UX snappy)
         let thumbnailUrl: string | undefined;
         if (file.type.startsWith('video/') && !isMobile()) {
           try {
+            logger.info('Generating video thumbnail', {
+              fileName: file.name,
+              fileSize: file.size,
+            });
+            
             thumbnailUrl = await generateVideoThumbnail(file);
-            console.log(`Generated thumbnail for video: ${file.name}`);
+            
+            logger.info('Video thumbnail generated successfully', {
+              fileName: file.name,
+              thumbnailUrl: thumbnailUrl ? 'Generated' : 'Failed',
+            });
           } catch (error) {
-            console.warn(`Failed to generate thumbnail for ${file.name}:`, error);
+            logger.warn('Failed to generate video thumbnail', {
+              fileName: file.name,
+              error: error instanceof Error ? error.message : String(error),
+            });
             // Continue without thumbnail - don't fail the entire upload
           }
         }
 
         // 4. Create media item in backend after S3 upload succeeds
+        logger.info('Creating media item in database', {
+          fileName: file.name,
+          mediaUrl: url.split('?')[0],
+          mediaType: file.type.startsWith('image/') ? 'photo' : 'video',
+          uploaderName,
+          hasThumbnail: !!thumbnailUrl,
+        });
+        
         const mediaParams = {
           title: caption || "",
           media_url: url.split('?')[0],
@@ -257,12 +375,30 @@ export const useBulkUploader = () => {
         };
         const createdMedia = await WeddingMedia.create(mediaParams);
 
+        logger.uploadComplete(file.name, {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          mediaId: createdMedia.id,
+          uploaderName,
+          hasThumbnail: !!thumbnailUrl,
+          compressionRatio: file.type.startsWith('image/') ? Math.round((1 - file.size / originalFile.size) * 100) : 0,
+        });
+
         setUploads(prev =>
           prev.map((u, i) =>
             i === idx ? { ...u, status: 'success' as UploadStatus, progress: 100, mediaItem: createdMedia } : u
           )
           );
       } catch (err) {
+        logger.uploadError(originalFile.name, err instanceof Error ? err : new Error(String(err)), {
+          fileName: originalFile.name,
+          fileSize: originalFile.size,
+          fileType: originalFile.type,
+          uploaderName,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+        
         console.error(`Upload failed for file ${originalFile.name} (${originalFile.type}):`, err);
         setUploads(prev =>
           prev.map((u, i) =>
@@ -273,6 +409,18 @@ export const useBulkUploader = () => {
           );
       }
     });
+    
+    // Log bulk upload completion
+    const successCount = uploads.filter(u => u.status === 'success').length;
+    const errorCount = uploads.filter(u => u.status === 'error').length;
+    
+    logger.info('Bulk upload process completed', {
+      totalFiles: files.length,
+      successCount,
+      errorCount,
+      uploaderName,
+      totalSize: files.reduce((sum, file) => sum + file.size, 0),
+    });
   };
 
   const cancelUploads = () => {
@@ -282,6 +430,15 @@ export const useBulkUploader = () => {
   const retryUpload = async (index: number) => {
     const upload = uploads[index];
     if (!upload || upload.status !== 'error') return;
+
+    logger.info('Retrying upload', {
+      fileName: upload.file.name,
+      fileSize: upload.file.size,
+      fileType: upload.file.type,
+      uploaderName: upload.uploaderName || '',
+      previousError: upload.error,
+      retryIndex: index,
+    });
 
     const controller = new AbortController();
     uploadControllers.current[index] = controller;

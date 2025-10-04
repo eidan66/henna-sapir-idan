@@ -7,28 +7,17 @@ Sentry.init({
   tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
   
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: process.env.NODE_ENV === 'development',
+  debug: false, // Disabled to prevent console warnings
   
-  // Enable logs
-  _experiments: {
-    enableLogs: true,
-  },
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
   
-  replaysOnErrorSampleRate: 1.0,
-  
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0.1,
+  // Removed replay settings since we're not using replay integration
   
   // Integrations
   integrations: [
-    // Send console.log, console.warn, and console.error calls as logs to Sentry
-    Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
-    Sentry.replayIntegration({
-      // Additional Replay configuration goes in here, for example:
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
+    // Removed consoleLoggingIntegration to prevent infinite loops
+    // Removed replayIntegration to prevent multiple instances error
   ],
   
   // Set environment
@@ -41,12 +30,6 @@ Sentry.init({
       app: 'henna-gallery',
     },
   },
-  
-  // Capture unhandled promise rejections
-  captureUnhandledRejections: true,
-  
-  // Capture uncaught exceptions
-  captureUncaughtException: true,
   
   // Custom error filtering
   beforeSend(event, hint) {
@@ -63,10 +46,28 @@ Sentry.init({
     // Add custom context
     event.tags = {
       ...event.tags,
-      userId: hint.originalException?.userId || 'anonymous',
-      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
+      userAgent: window.navigator.userAgent,
     };
     
     return event;
   },
+  
+  // Custom log filtering
+  beforeSendLog(log) {
+    // In development, send all logs
+    if (process.env.NODE_ENV === 'development') {
+      return log;
+    }
+    
+    // In production, filter out debug logs
+    if (log.level === 'debug') {
+      return null;
+    }
+    
+    return log;
+  },
 });
+
+// Export router transition hook for Sentry navigation instrumentation
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+
