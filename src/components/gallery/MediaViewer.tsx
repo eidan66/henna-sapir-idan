@@ -9,6 +9,7 @@ import { he } from "date-fns/locale";
 import type { WeddingMediaItem } from "@/Entities/WeddingMedia";
 import VideoPreview from "./VideoPreview";
 import { downloadMedia } from "@/utils";
+import { apiServices } from "@/services/api";
 import { logger } from "@/lib/logger";
 
 interface MediaViewerProps {
@@ -221,7 +222,7 @@ export default function MediaViewer({
             >
               {media.media_type === 'photo' ? (
                 <img
-                  src={media.media_url}
+                  src={apiServices.imageProxy.getProxiedImageUrl(media.media_url)}
                   alt={media.title || "זיכרון מהחינה"}
                   className="w-full h-full object-contain rounded-2xl shadow-2xl"
                   style={{ maxHeight: '70dvh' }}

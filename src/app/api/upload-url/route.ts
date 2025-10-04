@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateUploadUrl } from '@/utils/s3';
+import { handlePreflight, withCors } from '@/lib/cors';
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return handlePreflight();
+}
 
 interface UploadRequest {
   filename: string;
@@ -42,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await generateUploadUrl(filename, filetype, filesize, title, uploaderName);
-    return NextResponse.json(result);
+    return withCors(NextResponse.json(result));
   } catch (error) {
     console.error('Error generating upload URL:', error);
     
@@ -57,12 +63,12 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Failed to generate upload URL',
       },
       { status: 400 }
-    );
+    ));
   }
 }
 

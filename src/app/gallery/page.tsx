@@ -121,12 +121,19 @@ export default function GalleryPage() {
   useEffect(() => {
     if (!loader.current) return;
 
+    // Check if mobile for different loading strategy
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     const observer = new IntersectionObserver((entries) => {
       const target = entries[0];
       if (target && target.isIntersecting && hasMore && !isLoadingInitial && !isLoadingMore) {
         fetchMedia(page + 1);
       }
-    }, { root: null, rootMargin: "20px", threshold: 1.0 });
+    }, { 
+      root: null, 
+      rootMargin: isMobile ? "300px" : "100px", // Much larger margin for mobile
+      threshold: 0.1 // Lower threshold for earlier triggering
+    });
 
     observer.observe(loader.current);
     return () => observer.disconnect();

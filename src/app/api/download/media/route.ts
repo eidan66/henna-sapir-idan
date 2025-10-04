@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handlePreflight, withCors } from '@/lib/cors';
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return handlePreflight();
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,17 +17,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch the file from S3
-    const response = await fetch(url);
+    const s3Response = await fetch(url);
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+    if (!s3Response.ok) {
+      throw new Error(`Failed to fetch file: ${s3Response.status} ${s3Response.statusText}`);
     }
 
     // Get the file as a stream for better memory usage
-    const blob = await response.blob();
+    const blob = await s3Response.blob();
     
-    // Create proper download response
-    return new NextResponse(blob, {
+    // Create proper download response with CORS headers
+    const downloadResponse = new NextResponse(blob, {
       status: 200,
       headers: {
         'Content-Type': 'application/octet-stream', // Force download
@@ -32,11 +38,14 @@ export async function GET(request: NextRequest) {
         'Expires': '0',
       },
     });
+    
+    return withCors(downloadResponse, true); // true for image/media CORS
   } catch (error) {
     console.error('Download error:', error);
-    return NextResponse.json({ 
+    const errorResponse = NextResponse.json({ 
       error: 'Download failed', 
       message: error instanceof Error ? error.message : 'Unknown error' 
     }, { status: 500 });
+    return withCors(errorResponse);
   }
 }

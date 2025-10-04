@@ -19,8 +19,13 @@ export async function downloadImage(
       userAgent: navigator.userAgent,
     });
 
+    // Use proxy for S3 URLs to avoid CORS issues
+    const fetchUrl = url.includes('sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com') 
+      ? `/api/proxy/image?url=${encodeURIComponent(url)}`
+      : url;
+    
     // Fetch the image
-    const response = await fetch(url);
+    const response = await fetch(fetchUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
     }

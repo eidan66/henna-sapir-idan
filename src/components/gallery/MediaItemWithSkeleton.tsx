@@ -7,6 +7,8 @@ import type { WeddingMediaItem } from '@/Entities/WeddingMedia';
 import VideoPreview from './VideoPreview';
 import { logger } from '@/lib/logger';
 import { downloadMedia } from '@/utils';
+import { apiServices } from '@/services/api';
+import * as Sentry from '@sentry/nextjs';
 
 interface MediaItemWithSkeletonProps {
   item: WeddingMediaItem;
@@ -69,12 +71,15 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
 
   // Intersection Observer for lazy loading
   useEffect(() => {
-    // Default to loading first 6 items, then adjust based on screen size
-    let immediateLoadCount = 6;
+    // Increase immediate load count for better mobile scrolling experience
+    let immediateLoadCount = 12;
     
-    // Check if mobile or desktop (only on client side)
-    const isMobile = window.innerWidth < 768;
-    immediateLoadCount = isMobile ? 6 : 12;
+    // Check if mobile or desktop (only on client side) - avoid hydration mismatch
+    let isMobile = false;
+    if (typeof window !== 'undefined') {
+      isMobile = window.innerWidth < 768;
+      immediateLoadCount = isMobile ? 15 : 20; // Much higher for mobile
+    }
     
     // Load first items immediately for better UX
     if (index < immediateLoadCount) {
@@ -85,13 +90,21 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
+          logger.info('Media item entering viewport', {
+            component: 'MediaItemWithSkeleton',
+            mediaId: item.id,
+            index,
+            isMobile,
+            rootMargin: isMobile ? '200px' : '100px',
+          });
+          
           // Load immediately without delay
           setShouldLoad(true);
           observer.disconnect();
         }
       },
       {
-        rootMargin: '50px', // Reduced from 100px to minimize unnecessary requests
+        rootMargin: isMobile ? '200px' : '100px', // Much larger margin for mobile
         threshold: 0.1
       }
     );
@@ -107,28 +120,89 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
   useEffect(() => {
     if (!shouldLoad) return;
     
-    // No delay - show content immediately
+    // Immediate load for better mobile experience
     setShowSkeleton(false);
   }, [shouldLoad]);
+
+  // Preload strategy for mobile - start loading images earlier
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+    
+    // For mobile, start preloading images that are close to viewport
+    const preloadDistance = 5; // Load 5 items ahead on mobile
+    
+    if (index >= 15 && index < 15 + preloadDistance) {
+      // Start preloading these items slightly ahead of time
+      const timer = setTimeout(() => {
+        setShouldLoad(true);
+      }, 100); // Small delay to prioritize visible items
+      
+      return () => clearTimeout(timer);
+    }
+  }, [index, item.id]);
 
   // Track when media is actually loaded
   const handleMediaLoad = () => {
     setMediaLoaded(true);
     
-    logger.debug('Media item loaded', {
+    logger.info('Media item loaded successfully', {
       component: 'MediaItemWithSkeleton',
       mediaId: item.id,
       mediaType: item.media_type,
       index: index,
-      url: item.media_url,
+      originalUrl: item.media_url,
+      proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
+      shouldLoad,
+      mediaLoaded: true,
     });
     
-    // Remove preloading to reduce unnecessary requests
-    // Preloading was causing spam of Amazon S3 calls
+    // Log to Sentry for monitoring
+    Sentry.addBreadcrumb({
+      message: 'Media item loaded successfully',
+      category: 'media-loading',
+      level: 'info',
+      data: {
+        component: 'MediaItemWithSkeleton',
+        mediaId: item.id,
+        mediaType: item.media_type,
+        index: index,
+        originalUrl: item.media_url,
+        proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
+        shouldLoad,
+        mediaLoaded: true,
+      },
+    });
   };
 
   const handleMediaError = () => {
     setMediaLoaded(true); // Still hide skeleton on error
+    
+    logger.warn('Media item failed to load', {
+      component: 'MediaItemWithSkeleton',
+      mediaId: item.id,
+      mediaType: item.media_type,
+      index: index,
+      originalUrl: item.media_url,
+      proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
+      shouldLoad,
+    });
+    
+    // Log error to Sentry
+    Sentry.captureMessage('Media item failed to load', {
+      level: 'warning',
+      tags: { component: 'media-loading' },
+      extra: {
+        mediaId: item.id,
+        mediaType: item.media_type,
+        index: index,
+        originalUrl: item.media_url,
+        proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
+        shouldLoad,
+      },
+    });
   };
 
   return (
@@ -194,18 +268,19 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                 {item.media_type === 'photo' ? (
                   shouldLoad ? (
                     <Image
-                      src={item.media_url}
+                      src={apiServices.imageProxy.getProxiedImageUrl(item.media_url)}
                       alt={item.title || "Wedding memory"}
                       width={500}
                       height={500}
                       className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
-                      loading={index < 4 ? "eager" : "lazy"}
-                      priority={index < 2}
+                      loading={index < 8 ? "eager" : "lazy"} // Increased eager loading for mobile
+                      priority={index < 4} // Increased priority items
                       decoding="async"
                       onLoad={handleMediaLoad}
                       onError={handleMediaError}
                       placeholder="blur"
                       blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     />
                   ) : (
                     <div className="w-full h-48 bg-gradient-to-br from-gold-100 to-cream-100 animate-pulse" />

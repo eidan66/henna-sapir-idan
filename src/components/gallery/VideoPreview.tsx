@@ -4,6 +4,7 @@ import { Play } from "lucide-react";
 import VideoPlaceholder from "./VideoPlaceholder";
 import { isMobile } from "@/utils";
 import { logger } from "@/lib/logger";
+import { apiServices } from "@/services/api";
 
 interface VideoPreviewProps {
   mp4Url: string;
@@ -100,7 +101,7 @@ export default function VideoPreview({
       {hasError && posterUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={posterUrl}
+          src={apiServices.imageProxy.getProxiedImageUrl(posterUrl)}
           alt="Video poster"
           className="absolute inset-0 w-full h-full object-cover"
         />
@@ -115,7 +116,7 @@ export default function VideoPreview({
           loop={!showControls}
           autoPlay={autoPlay}
           preload="metadata"
-          poster={posterUrl}
+          poster={apiServices.imageProxy.getProxiedImageUrl(posterUrl)}
           disableRemotePlayback
           controls={showControls}
           className="w-full h-auto object-cover"
@@ -124,8 +125,8 @@ export default function VideoPreview({
           onCanPlay={handleCanPlay}
           onError={handleVideoError}
         >
-          {!isIOS && webmUrl && <source src={webmUrl} type="video/webm" />}
-          <source src={mp4Url} type="video/mp4" />
+          {!isIOS && webmUrl && <source src={apiServices.imageProxy.getProxiedImageUrl(webmUrl)} type="video/webm" />}
+          <source src={apiServices.imageProxy.getProxiedImageUrl(mp4Url)} type="video/mp4" />
         </video>
       )}
 
