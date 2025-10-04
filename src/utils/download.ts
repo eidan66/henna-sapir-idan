@@ -53,11 +53,53 @@ export async function downloadImage(
       blobType: blob.type,
     });
 
+    // Check if we're on mobile and have Web Share API support
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const hasWebShareAPI = 'share' in navigator && 'canShare' in navigator;
+    
+    if (isMobile && hasWebShareAPI) {
+      try {
+        // Create a file from the blob
+        const file = new File([blob], filename, { type: blob.type });
+        
+        // Check if we can share this file
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: filename,
+            text: `זיכרון מהחינה - ${filename}`
+          });
+          
+          logger.info('Image shared successfully via Web Share API', {
+            url,
+            filename,
+            mediaId,
+            fileSize: blob.size,
+            contentType: blob.type,
+          });
+          return;
+        }
+      } catch (shareError) {
+        logger.warn('Web Share API failed, falling back to download', {
+          error: shareError instanceof Error ? shareError.message : String(shareError),
+          url,
+          filename,
+          mediaId,
+        });
+        // Fall through to regular download
+      }
+    }
+
     // Create download link
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = filename;
+    
+    // For mobile, try to open in new tab if download doesn't work
+    if (isMobile) {
+      link.target = '_blank';
+    }
     
     // Trigger download
     document.body.appendChild(link);
@@ -139,11 +181,53 @@ export async function downloadVideo(
       blobType: blob.type,
     });
 
+    // Check if we're on mobile and have Web Share API support
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const hasWebShareAPI = 'share' in navigator && 'canShare' in navigator;
+    
+    if (isMobile && hasWebShareAPI) {
+      try {
+        // Create a file from the blob
+        const file = new File([blob], filename, { type: blob.type });
+        
+        // Check if we can share this file
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: filename,
+            text: `זיכרון מהחינה - ${filename}`
+          });
+          
+          logger.info('Video shared successfully via Web Share API', {
+            url,
+            filename,
+            mediaId,
+            fileSize: blob.size,
+            contentType: blob.type,
+          });
+          return;
+        }
+      } catch (shareError) {
+        logger.warn('Web Share API failed, falling back to download', {
+          error: shareError instanceof Error ? shareError.message : String(shareError),
+          url,
+          filename,
+          mediaId,
+        });
+        // Fall through to regular download
+      }
+    }
+
     // Create download link
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = filename;
+    
+    // For mobile, try to open in new tab if download doesn't work
+    if (isMobile) {
+      link.target = '_blank';
+    }
     
     // Trigger download
     document.body.appendChild(link);
