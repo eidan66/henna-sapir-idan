@@ -59,17 +59,11 @@ export default function GalleryHeader({ mediaCount }: GalleryHeaderProps) {
         </p>
         
         {/* Download Info Banner */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-6 max-w-3xl mx-auto">
-          <div className="flex items-center justify-center gap-3">
-            <Download className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-            <div className="text-center">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                💡 <strong>טיפ:</strong> ניתן להוריד תמונות בודדות על ידי לחיצה עליהן
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                לחצו על כל תמונה או סרטון כדי לצפות ולהוריד אותה למכשיר שלכם
-              </p>
-            </div>
+        <div className="bg-gray-50 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-600 rounded-lg p-3 mb-6 max-w-2xl mx-auto">
+          <div className="text-center" dir="rtl">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              💡 לחיצה על תמונה או סרטון מאפשרת לצפות ולהוריד אותה
+            </p>
           </div>
         </div>
         

@@ -15,7 +15,7 @@ import MediaViewer from "@/components/gallery/MediaViewer";
 import FilterTabs from "@/components/gallery/FilterTabs";
 import GalleryHeader from "@/components/gallery/GalleryHeader";
 
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 100;
 
 export default function GalleryPage() {
   const [media, setMedia] = useState<WeddingMediaItem[]>([]);
@@ -131,7 +131,7 @@ export default function GalleryPage() {
       }
     }, { 
       root: null, 
-      rootMargin: isMobile ? "300px" : "100px", // Much larger margin for mobile
+      rootMargin: isMobile ? "300px" : "50px", // Much larger margin for mobile
       threshold: 0.1 // Lower threshold for earlier triggering
     });
 
