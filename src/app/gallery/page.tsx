@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { WeddingMediaItem } from "@/Entities/WeddingMedia";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -21,7 +21,7 @@ export default function GalleryPage() {
   const [media, setMedia] = useState<WeddingMediaItem[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
+  // const [page, setPage] = useState(1); // Not used anymore
   const [hasMore, setHasMore] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<WeddingMediaItem | null>(null);
   // const [activeFilter, setActiveFilter] = useState<"all" | "photo" | "video">("all");
@@ -74,11 +74,19 @@ export default function GalleryPage() {
         filterType,
         totalItems: data.items.length,
         items: data.items,
-        videoItems: data.items.filter((item: any) => item.type === 'video'),
-        imageItems: data.items.filter((item: any) => item.type === 'image')
+        videoItems: (data.items as Array<{ type: string }>).filter(item => item.type === 'video'),
+        imageItems: (data.items as Array<{ type: string }>).filter(item => item.type === 'image')
       });
       
-      const mappedMedia: WeddingMediaItem[] = data.items.map((item: any) => {
+      const mappedMedia: WeddingMediaItem[] = (data.items as Array<{ 
+        id: string; 
+        url: string; 
+        type: string; 
+        title?: string; 
+        uploader_name?: string; 
+        created_date?: string; 
+        thumbnail_url?: string; 
+      }>).map((item) => {
         const mappedItem = {
           id: item.id,
           media_url: item.url,
@@ -109,7 +117,7 @@ export default function GalleryPage() {
       const anyData = data as unknown as { hasMore?: boolean };
       const more = typeof anyData.hasMore === 'boolean' ? anyData.hasMore : (mappedMedia.length === ITEMS_PER_PAGE);
       setHasMore(more);
-      setPage(pageToLoad);
+      // setPage(pageToLoad); // Not used anymore
 
     } catch (error) {
       console.error("Error loading media:", error);
@@ -161,7 +169,15 @@ export default function GalleryPage() {
             break;
           }
 
-          const mappedMedia: WeddingMediaItem[] = data.items.map((item: any) => ({
+          const mappedMedia: WeddingMediaItem[] = (data.items as Array<{ 
+            id: string; 
+            url: string; 
+            type: string; 
+            title?: string; 
+            uploader_name?: string; 
+            created_date?: string; 
+            thumbnail_url?: string; 
+          }>).map((item) => ({
             id: item.id,
             media_url: item.url,
             media_type: (item.type === 'image' ? 'photo' : item.type === 'video' ? 'video' : 'photo') as 'photo' | 'video',
@@ -259,8 +275,6 @@ export default function GalleryPage() {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <FilterTabs 
-            activeFilter={activeFilter} 
-            onFilterChange={handleFilterChange}
             media={media}
             totalAll={totals.all}
             totalPhotos={totals.photos}

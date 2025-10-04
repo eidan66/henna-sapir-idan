@@ -28,16 +28,16 @@ interface FilterOption {
   count: number;
 }
 
-export default function FilterTabs({ activeFilter, onFilterChange, media, totalAll, totalPhotos, totalVideos }: FilterTabsProps) {
+export default function FilterTabs({ media, totalAll, totalPhotos, totalVideos }: Omit<FilterTabsProps, 'activeFilter' | 'onFilterChange'>) {
   const photoCount = totalPhotos ?? media.filter(item => item.media_type === 'photo').length;
   const videoCount = totalVideos ?? media.filter(item => item.media_type === 'video').length;
   const allCount = totalAll ?? (photoCount + videoCount);
 
-  const filters: FilterOption[] = [
-    { id: 'all', label: 'כל הזכרונות', icon: Grid3X3, count: allCount },
-    { id: 'photo', label: 'תמונות', icon: Camera, count: photoCount },
-    { id: 'video', label: 'סרטונים', icon: Video, count: videoCount },
-  ];
+  // const filters: FilterOption[] = [
+  //   { id: 'all', label: 'כל הזכרונות', icon: Grid3X3, count: allCount },
+  //   { id: 'photo', label: 'תמונות', icon: Camera, count: photoCount },
+  //   { id: 'video', label: 'סרטונים', icon: Video, count: videoCount },
+  // ];
 
   // FILTERS DISABLED - Show only "All" option
   return (

@@ -17,7 +17,7 @@ interface MediaItemWithSkeletonProps {
 }
 
 export default function MediaItemWithSkeleton({ item, index, onMediaClick }: MediaItemWithSkeletonProps) {
-  const [showSkeleton, setShowSkeleton] = useState(true);
+  // const [showSkeleton, setShowSkeleton] = useState(true); // Not used anymore
   const [mediaLoaded, setMediaLoaded] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -72,7 +72,6 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
   // Load ALL items immediately - no lazy loading for better UX
   useEffect(() => {
     setShouldLoad(true);
-    setShowSkeleton(false); // Show content immediately
   }, []);
 
   // No need for preload strategy - all items load immediately
