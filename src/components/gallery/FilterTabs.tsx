@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Camera, Video, Grid3X3 } from "lucide-react";
+import { Grid3X3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface MediaItem {
@@ -21,12 +21,12 @@ interface FilterTabsProps {
   totalVideos?: number;
 }
 
-interface FilterOption {
-  id: 'all' | 'photo' | 'video';
-  label: string;
-  icon: LucideIcon;
-  count: number;
-}
+// interface FilterOption {
+//   id: 'all' | 'photo' | 'video';
+//   label: string;
+//   icon: LucideIcon;
+//   count: number;
+// }
 
 export default function FilterTabs({ media, totalAll, totalPhotos, totalVideos }: Omit<FilterTabsProps, 'activeFilter' | 'onFilterChange'>) {
   const photoCount = totalPhotos ?? media.filter(item => item.media_type === 'photo').length;

@@ -263,8 +263,8 @@ export default function GalleryPage() {
   //   fetchMedia(1, apiFilterType);
   // }, [activeFilter, fetchMedia]);
   
-  // Dummy function to prevent errors
-  const handleFilterChange = useCallback(() => {}, []);
+  // Dummy function to prevent errors - commented out since not used
+  // const handleFilterChange = useCallback(() => {}, []);
 
   return (
     <div className="min-h-screen henna-gradient">
