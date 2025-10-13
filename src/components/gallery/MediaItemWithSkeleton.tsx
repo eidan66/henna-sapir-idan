@@ -8,7 +8,6 @@ import VideoPreview from './VideoPreview';
 import { logger } from '@/lib/logger';
 import { downloadMedia } from '@/utils';
 import { apiServices } from '@/services/api';
-import * as Sentry from '@sentry/nextjs';
 
 interface MediaItemWithSkeletonProps {
   item: WeddingMediaItem;

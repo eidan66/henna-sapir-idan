@@ -1,8 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
 import { apiServices } from '@/services/api';
 import { logger } from '@/lib/logger';
-import * as Sentry from '@sentry/nextjs';
 
 // Query Keys - centralized for consistency
 export const mediaQueryKeys = {

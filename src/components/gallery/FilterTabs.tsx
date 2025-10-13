@@ -1,7 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
 import { Grid3X3 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 interface MediaItem {
   id: string;

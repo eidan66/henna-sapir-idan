@@ -25,7 +25,6 @@ export default function GalleryWithReactQuery() {
   const {
     data,
     isLoading,
-    error,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,

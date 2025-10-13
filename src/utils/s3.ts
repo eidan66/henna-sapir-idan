@@ -3,7 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { allowedTypes } from '../constants/allowedTypes';
 import { AlbumItem } from '../types';
-import { getCloudFrontUrl, getS3Url } from '../config/cloudfront';
+import { getCloudFrontUrl } from '../config/cloudfront';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
