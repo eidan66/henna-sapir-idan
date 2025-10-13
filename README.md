@@ -1,5 +1,12 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 📚 Documentation
+
+- **[CACHING.md](./CACHING.md)** - Complete caching system guide (TanStack Query + Redis)
+- **[VERCEL_KV_SETUP.md](./VERCEL_KV_SETUP.md)** - 1-click Redis setup for Vercel (Recommended!)
+- **[UPSTASH_SETUP.md](./UPSTASH_SETUP.md)** - Alternative Redis provider
+- **[SECURITY.md](./SECURITY.md)** - Security & environment variables guide
+
 ## Getting Started
 
 First, run the development server:

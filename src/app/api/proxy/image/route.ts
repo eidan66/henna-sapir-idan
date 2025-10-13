@@ -46,11 +46,14 @@ export async function GET(request: NextRequest) {
       ));
     }
 
-    // Validate that it's an S3 URL for security
-    if (!imageUrl.includes('sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com')) {
-      console.error('ImageProxy: Invalid S3 URL', { imageUrl });
+    // Validate that it's an S3 or CloudFront URL for security
+    const isValidS3Url = imageUrl.includes('sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com');
+    const isValidCloudFrontUrl = imageUrl.includes('.cloudfront.net');
+    
+    if (!isValidS3Url && !isValidCloudFrontUrl) {
+      console.error('ImageProxy: Invalid S3/CloudFront URL', { imageUrl });
       
-      Sentry.captureMessage('ImageProxy: Invalid S3 URL', {
+      Sentry.captureMessage('ImageProxy: Invalid S3/CloudFront URL', {
         level: 'warning',
         tags: { component: 'image-proxy' },
         extra: { imageUrl },

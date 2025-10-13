@@ -41,14 +41,14 @@ export default function FilterTabs({ media, totalAll, totalPhotos, totalVideos }
 
   // FILTERS DISABLED - Show only "All" option
   return (
-    <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+    <div className="flex flex-wrap gap-2 justify-center sm:justify-start w-full sm:w-auto">
       {/* Show only "All" filter - others commented out */}
       <motion.div
-        className="flex items-center gap-2 px-4 py-2 rounded-full font-medium bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg border border-white/40 w-full sm:w-auto justify-center sm:justify-start"
+        className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full font-medium bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg border border-white/40 w-full sm:w-auto justify-center text-sm sm:text-base"
       >
         <Grid3X3 className="w-4 h-4" />
         <span>כל הזכרונות</span>
-        <span className="text-xs px-2 py-1 rounded-full bg-white/20 text-white">
+        <span className="text-xs px-2 py-0.5 sm:py-1 rounded-full bg-white/20 text-white">
           {allCount}
         </span>
       </motion.div>

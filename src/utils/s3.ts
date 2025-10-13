@@ -3,6 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { allowedTypes } from '../constants/allowedTypes';
 import { AlbumItem } from '../types';
+import { getCloudFrontUrl, getS3Url } from '../config/cloudfront';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
@@ -56,11 +57,12 @@ export const generateUploadUrl = async (
   if (title) objectMetadata.title = encodeURIComponent(title);
   if (uploaderName) objectMetadata.uploader_name = encodeURIComponent(uploaderName);
   
-  // Create the command with metadata
+  // Create the command with metadata and cache headers
   const command = new PutObjectCommand({
     Bucket: process.env.S3_BUCKET_NAME,
     Key: key,
     ContentType: filetype,
+    CacheControl: 'public, max-age=31536000, immutable', // Cache for 1 year
     Metadata: objectMetadata,
   });
 
@@ -82,7 +84,6 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
   });
 
   const response = await s3Client.send(command);
-  const baseUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`;
 
   const contents = (response.Contents ?? []).filter(obj => !!obj.Key && !obj.Key!.endsWith('/'));
 
@@ -97,7 +98,7 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
   // Fetch metadata for each item concurrently (best-effort)
   await Promise.all(sorted.map(async (item) => {
     const key = item.Key as string;
-    const url = `${baseUrl}${key}`;
+    const url = getCloudFrontUrl(key); // Use CloudFront URL for better performance
     const id = key;
     const ext = id.split('.').pop()?.toLowerCase() ?? '';
 
@@ -126,6 +127,10 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
 
     const createdIso = itemMetadata.created_date || item.LastModified?.toISOString() || new Date(0).toISOString();
 
+    // For videos, don't set thumbnail_url to avoid conflicts with video loading
+    // The browser will handle the first frame as poster automatically
+    const thumbnail_url = undefined;
+
     items.push({
       id,
       url,
@@ -133,6 +138,7 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
       created_date: createdIso,
       title: itemMetadata.title || '',
       uploader_name: itemMetadata.uploader_name || 'אורח אנונימי',
+      thumbnail_url,
     });
   }));
 

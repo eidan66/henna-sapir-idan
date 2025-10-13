@@ -9,7 +9,7 @@ import { apiServices } from "@/services/api";
 interface VideoPreviewProps {
   mp4Url: string;
   webmUrl?: string;
-  posterUrl: string;
+  posterUrl?: string;
   className?: string;
   onError?: () => void;
   onLoad?: () => void;
@@ -49,7 +49,11 @@ export default function VideoPreview({
   // Failsafe: if events never fire, hide overlay after a short delay
   useEffect(() => {
     if (isReady) return;
-    const t = setTimeout(() => setIsReady(true), 3000);
+    const t = setTimeout(() => {
+      console.log('VideoPreview: Failsafe timeout - hiding overlay', { mp4Url, posterUrl });
+      setIsReady(true);
+      setPosterVisible(false);
+    }, 5000); // Increased timeout to 5 seconds
     return () => clearTimeout(t);
   }, [isReady, mp4Url, posterUrl]);
 
@@ -66,6 +70,7 @@ export default function VideoPreview({
   }, []);
 
   const handleVideoError = () => {
+    console.log('VideoPreview: Video failed to load', { mp4Url, posterUrl });
     logger.warn('Video failed to load', {
       component: 'VideoPreview',
       mp4Url: mp4Url,
@@ -73,8 +78,9 @@ export default function VideoPreview({
     });
     setHasError(true);
     setIsLoading(false);
-    setShowFallback(!posterUrl);
-    setPosterVisible(true);
+    setShowFallback(true); // Always show fallback on error
+    setPosterVisible(false);
+    setIsReady(true); // Mark as ready so overlay disappears
     onError?.();
   };
 
@@ -84,6 +90,8 @@ export default function VideoPreview({
   };
 
   const handleCanPlay = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (isReady) return; // Prevent multiple calls
+    
     setIsLoading(false);
     setIsReady(true);
     const v = e.currentTarget;
@@ -95,6 +103,9 @@ export default function VideoPreview({
   };
 
   const containerClass = fixedAspect ? `relative aspect-video ${className}` : `relative ${className}`;
+  const videoClass = fixedAspect 
+    ? "w-full h-auto object-cover" 
+    : "w-full h-full object-contain";
 
   return (
     <div className={containerClass}>
@@ -103,7 +114,7 @@ export default function VideoPreview({
         <img
           src={apiServices.imageProxy.getProxiedImageUrl(posterUrl)}
           alt="Video poster"
-          className="absolute inset-0 w-full h-full object-cover"
+          className={fixedAspect ? "absolute inset-0 w-full h-full object-cover" : "w-full h-full object-contain"}
         />
       )}
 
@@ -116,10 +127,11 @@ export default function VideoPreview({
           loop={!showControls}
           autoPlay={autoPlay}
           preload="metadata"
-          poster={apiServices.imageProxy.getProxiedImageUrl(posterUrl)}
+          poster={posterUrl ? apiServices.imageProxy.getProxiedImageUrl(posterUrl) : undefined}
           disableRemotePlayback
           controls={showControls}
-          className="w-full h-auto object-cover"
+          className={videoClass}
+          style={!fixedAspect ? { maxHeight: '100%' } : undefined}
           onLoadStart={() => setIsLoading(true)}
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
@@ -140,7 +152,7 @@ export default function VideoPreview({
         <VideoPlaceholder className="w-full h-full" />
       )}
 
-      {(!showFallback && (isLoading || posterVisible || !isReady || (hasError && !!posterUrl))) && (
+      {(!showFallback && !hasError && (posterVisible || (!isReady && !isLoading))) && (
         <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
           <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
             <Play className="w-8 h-8 text-emerald-600 ml-1" />

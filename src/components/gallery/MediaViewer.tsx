@@ -143,7 +143,7 @@ export default function MediaViewer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4"
           onClick={onClose}
         >
           {/* Navigation Buttons - Swapped for RTL */}
@@ -152,25 +152,25 @@ export default function MediaViewer({
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
                 onClick={(e) => {
                   e.stopPropagation();
                   onNavigate('prev');
                 }}
               >
-                <ChevronRight className="w-6 h-6" />
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
               </Button>
               
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
                 onClick={(e) => {
                   e.stopPropagation();
                   onNavigate('next');
                 }}
               >
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </Button>
             </>
           )}
@@ -179,36 +179,36 @@ export default function MediaViewer({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-4 left-4 w-12 h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+            className="absolute top-2 sm:top-4 left-2 sm:left-4 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
             onClick={onClose}
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </Button>
 
           {/* Download Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-4 left-20 w-12 h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+            className="absolute top-2 sm:top-4 left-14 sm:left-20 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
             onClick={(e) => {
               e.stopPropagation();
               handleDownload();
             }}
             disabled={isDownloading}
           >
-            <Download className={`w-6 h-6 ${isDownloading ? 'animate-spin' : ''}`} />
+            <Download className={`w-5 h-5 sm:w-6 sm:h-6 ${isDownloading ? 'animate-spin' : ''}`} />
           </Button>
 
           {/* Counter */}
           {totalCount > 1 && (
-            <div className="absolute top-4 right-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-white text-sm font-medium z-20">
+            <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 text-white text-xs sm:text-sm font-medium z-20">
               {currentIndex + 1} מתוך {totalCount}
             </div>
           )}
 
           {/* Media Content Container */}
           <div
-            className="relative w-full max-w-screen-lg mx-auto flex flex-col items-center"
+            className="relative w-full max-w-screen-xl mx-auto flex flex-col items-center h-full"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Media Content */}
@@ -218,40 +218,45 @@ export default function MediaViewer({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="relative w-full h-auto"
+              className="relative w-full h-auto flex items-center justify-center"
+              style={{ 
+                maxHeight: 'calc(100dvh - 220px)', // Reserve space for buttons and info
+              }}
             >
               {media.media_type === 'photo' ? (
                 <img
                   src={apiServices.imageProxy.getProxiedImageUrl(media.media_url)}
                   alt={media.title || "זיכרון מהחינה"}
-                  className="w-full h-full object-contain rounded-2xl shadow-2xl"
-                  style={{ maxHeight: '70dvh' }}
+                  className="w-full h-full object-contain rounded-lg sm:rounded-2xl shadow-2xl"
+                  style={{ maxHeight: 'calc(100dvh - 220px)' }}
                 />
               ) : (
-                <VideoPreview
-                  mp4Url={media.media_url}
-                  posterUrl={media.thumbnail_url || ""}
-                  className="w-full h-full object-contain rounded-2xl shadow-2xl"
-                  fixedAspect={false}
-                  showControls={true}
-                  autoPlay={false}
-                  onLoad={() => {
-                    logger.info('Video loaded successfully in MediaViewer', {
-                      mediaId: media.id,
-                      mediaType: media.media_type,
-                      videoUrl: media.media_url,
-                      posterUrl: media.thumbnail_url,
-                    });
-                  }}
-                  onError={() => {
-                    logger.warn('Video failed to load in MediaViewer', {
-                      mediaId: media.id,
-                      mediaType: media.media_type,
-                      videoUrl: media.media_url,
-                      posterUrl: media.thumbnail_url,
-                    });
-                  }}
-                />
+                <div className="w-full h-full" style={{ maxHeight: 'calc(100dvh - 220px)' }}>
+                  <VideoPreview
+                    mp4Url={media.media_url}
+                    posterUrl={media.thumbnail_url || undefined}
+                    className="w-full h-full object-contain rounded-lg sm:rounded-2xl shadow-2xl"
+                    fixedAspect={false}
+                    showControls={true}
+                    autoPlay={false}
+                    onLoad={() => {
+                      logger.info('Video loaded successfully in MediaViewer', {
+                        mediaId: media.id,
+                        mediaType: media.media_type,
+                        videoUrl: media.media_url,
+                        posterUrl: media.thumbnail_url,
+                      });
+                    }}
+                    onError={() => {
+                      logger.warn('Video failed to load in MediaViewer', {
+                        mediaId: media.id,
+                        mediaType: media.media_type,
+                        videoUrl: media.media_url,
+                        posterUrl: media.thumbnail_url,
+                      });
+                    }}
+                  />
+                </div>
               )}
             </motion.div>
 
@@ -260,25 +265,25 @@ export default function MediaViewer({
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="w-full mt-4 bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl p-4 sm:p-6 shadow-xl"
+              className="w-full mt-2 sm:mt-4 bg-black/50 backdrop-blur-md border border-white/10 rounded-lg sm:rounded-2xl p-3 sm:p-6 shadow-xl"
             >
-              <div className="text-white space-y-3 w-full">
+              <div className="text-white space-y-2 sm:space-y-3 w-full">
                 {media.title && (
-                  <h3 className="text-lg sm:text-xl font-semibold leading-relaxed break-words">
+                  <h3 className="text-base sm:text-lg md:text-xl font-semibold leading-relaxed break-words">
                     {media.title}
                   </h3>
                 )}
                 
-                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 text-sm text-white/90 w-full">
+                <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4 text-xs sm:text-sm text-white/90 w-full">
                   {media.uploader_name && (
                     <div className="flex items-center gap-2 min-w-0 flex-shrink">
-                      <User className="w-4 h-4 flex-shrink-0 text-white/80" />
+                      <User className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-white/80" />
                       <span className="break-words">שותף על ידי {media.uploader_name}</span>
                     </div>
                   )}
                   
                   <div className="flex items-center gap-2 min-w-0 flex-shrink">
-                    <Calendar className="w-4 h-4 flex-shrink-0 text-white/80" />
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-white/80" />
                     <span className="break-words">{format(new Date(media.created_date), "d MMMM yyyy 'בשעה' H:mm", { locale: he })}</span>
                   </div>
                 </div>

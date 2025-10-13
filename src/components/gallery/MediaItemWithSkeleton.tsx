@@ -79,71 +79,18 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
   // Track when media is actually loaded
   const handleMediaLoad = () => {
     setMediaLoaded(true);
-    
-    logger.info('Media item loaded successfully', {
-      component: 'MediaItemWithSkeleton',
-      mediaId: item.id,
-      mediaType: item.media_type,
-      index: index,
-      originalUrl: item.media_url,
-      proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
-      shouldLoad,
-      mediaLoaded: true,
-    });
-    
-    // Log to Sentry for monitoring
-    Sentry.addBreadcrumb({
-      message: 'Media item loaded successfully',
-      category: 'media-loading',
-      level: 'info',
-      data: {
-        component: 'MediaItemWithSkeleton',
-        mediaId: item.id,
-        mediaType: item.media_type,
-        index: index,
-        originalUrl: item.media_url,
-        proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
-        shouldLoad,
-        mediaLoaded: true,
-      },
-    });
   };
 
   const handleMediaError = () => {
     setMediaLoaded(true); // Still hide skeleton on error
-    
-    logger.warn('Media item failed to load', {
-      component: 'MediaItemWithSkeleton',
-      mediaId: item.id,
-      mediaType: item.media_type,
-      index: index,
-      originalUrl: item.media_url,
-      proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
-      shouldLoad,
-    });
-    
-    // Log error to Sentry
-    Sentry.captureMessage('Media item failed to load', {
-      level: 'warning',
-      tags: { component: 'media-loading' },
-      extra: {
-        mediaId: item.id,
-        mediaType: item.media_type,
-        index: index,
-        originalUrl: item.media_url,
-        proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(item.media_url),
-        shouldLoad,
-      },
-    });
   };
 
   return (
     <motion.div
       ref={elementRef}
-      key={`${item.id}-${index}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      transition={{ duration: 0.3 }}
       className="group cursor-pointer"
       onClick={() => onMediaClick(item)}
     >
@@ -151,7 +98,7 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
         {/* Media Content */}
         <div className="relative">
           <AnimatePresence mode="wait">
-            {false ? ( // Never show skeleton - always show content immediately
+            {false ? ( // Never show skeleton - content is preloaded
               // Enhanced Skeleton
               <motion.div
                 key="skeleton"
@@ -190,12 +137,12 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                 </div>
               </motion.div>
             ) : (
-              // Actual Media - Always show immediately
+              // Actual Media - Preloaded, show immediately
               <motion.div
                 key="media"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.1 }}
+                transition={{ duration: 0.3 }}
               >
                 {item.media_type === 'photo' ? (
                   true ? ( // Always load photos immediately
@@ -221,7 +168,7 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                   true ? ( // Always load videos immediately
                     <VideoPreview
                       mp4Url={item.media_url}
-                      posterUrl={item.thumbnail_url || ""}
+                      posterUrl={item.thumbnail_url || undefined}
                       className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
                       onLoad={handleMediaLoad}
                       onError={() => {
@@ -242,27 +189,27 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
           {/* Hover Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
-          {/* Download Button */}
+          {/* Download Button - Always visible on mobile, hover on desktop */}
           <button
             onClick={handleDownload}
             disabled={isDownloading}
-            className="absolute top-3 right-3 w-8 h-8 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white border border-white/30 opacity-0 group-hover:opacity-100 transition-all duration-300 disabled:opacity-50"
+            className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 bg-white/30 hover:bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white border border-white/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 disabled:opacity-50 shadow-lg"
           >
             <Download className={`w-4 h-4 ${isDownloading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        {/* Content Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+        {/* Content Overlay - Better mobile visibility */}
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white bg-gradient-to-t from-black/80 via-black/50 to-transparent sm:transform sm:translate-y-full sm:group-hover:translate-y-0 transition-transform duration-300">
           {item.title && (
-            <p className="font-medium mb-2 text-sm leading-relaxed">
+            <p className="font-medium mb-1 sm:mb-2 text-xs sm:text-sm leading-relaxed line-clamp-2">
               {item.title}
             </p>
           )}
           {item.uploader_name && (
-            <div className="flex items-center gap-2 text-xs opacity-90">
-              <User className="w-3 h-3" />
-              <span>על ידי {item.uploader_name}</span>
+            <div className="flex items-center gap-1 sm:gap-2 text-xs opacity-90">
+              <User className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">על ידי {item.uploader_name}</span>
             </div>
           )}
         </div>

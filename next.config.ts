@@ -10,6 +10,13 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/henna-uploads/**',
       },
+      // CloudFront domain will be added dynamically based on environment variable
+      ...(process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN ? [{
+        protocol: 'https' as const,
+        hostname: process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN,
+        port: '',
+        pathname: '/**',
+      }] : []),
       {
         protocol: 'http',
         hostname: 'localhost',

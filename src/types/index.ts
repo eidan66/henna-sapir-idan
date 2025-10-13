@@ -5,6 +5,7 @@ export type AlbumItem = {
     created_date: string;
     title?: string;
     uploader_name?: string;
+    thumbnail_url?: string;
   };
 
 export type ProcessedMediaItem = {
