@@ -231,11 +231,17 @@ export default function MediaViewer({
                   style={{ maxHeight: 'calc(100dvh - 220px)' }}
                 />
               ) : (
-                <div className="w-full h-full" style={{ maxHeight: 'calc(100dvh - 220px)' }}>
+                <div 
+                  className="w-full flex items-center justify-center" 
+                  style={{ 
+                    height: 'calc(100dvh - 220px)',
+                    maxHeight: 'calc(100dvh - 220px)',
+                  }}
+                >
                   <VideoPreview
                     mp4Url={media.media_url}
                     posterUrl={media.thumbnail_url || undefined}
-                    className="w-full h-full object-contain rounded-lg sm:rounded-2xl shadow-2xl"
+                    className="rounded-lg sm:rounded-2xl shadow-2xl"
                     fixedAspect={false}
                     showControls={true}
                     autoPlay={false}

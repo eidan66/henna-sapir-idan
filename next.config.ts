@@ -2,6 +2,21 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig: NextConfig = {
+  // Optimize performance
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
+  
+  // Reduce preload warnings
+  poweredByHeader: false,
+  
+  // Reduce preload warnings by limiting resource hints
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn']
+    } : false,
+  },
+  
   images: {
     remotePatterns: [
       {

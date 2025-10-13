@@ -98,7 +98,7 @@ export default function GalleryWithReactQuery() {
 
   return (
     <div className="min-h-screen henna-gradient">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-6 sm:py-8 pb-24 md:pb-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 py-6 sm:py-8 pb-24 md:pb-8">
         <GalleryHeader mediaCount={totalCount} />
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">

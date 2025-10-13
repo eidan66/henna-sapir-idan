@@ -90,12 +90,12 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="group cursor-pointer"
+      className="group cursor-pointer w-full h-full"
       onClick={() => onMediaClick(item)}
     >
-      <div className="relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 glass-effect border border-gold-200 group-hover:border-emerald-300">
+      <div className="relative overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 glass-effect w-full h-full border border-white/10">
         {/* Media Content */}
-        <div className="relative">
+        <div className="relative w-full h-full">
           <AnimatePresence mode="wait">
             {false ? ( // Never show skeleton - content is preloaded
               // Enhanced Skeleton
@@ -104,7 +104,7 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
-                className="w-full relative overflow-hidden rounded-2xl"
+                className="w-full relative overflow-hidden"
                 style={{ height: `${200 + (index % 3) * 50}px` }}
               >
                 {/* Main skeleton background */}
@@ -150,9 +150,9 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                       alt={item.title || "Wedding memory"}
                       width={500}
                       height={500}
-                      className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
-                      loading="eager" // Load all images immediately
-                      priority={index < 300} // Priority for first 100 items
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      loading={index < 20 ? "eager" : "lazy"} // Only first 20 images load eagerly
+                      priority={index < 10} // Priority for first 10 items only
                       decoding="async"
                       onLoad={handleMediaLoad}
                       onError={handleMediaError}
@@ -168,7 +168,7 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                     <VideoPreview
                       mp4Url={item.media_url}
                       posterUrl={item.thumbnail_url || undefined}
-                      className="w-full h-auto object-cover group-hover:scale-110 transition-transform duration-700"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       onLoad={handleMediaLoad}
                       onError={() => {
                         console.debug('Video failed to load in MediaGrid for item:', item.id);

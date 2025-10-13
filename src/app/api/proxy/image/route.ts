@@ -7,6 +7,63 @@ export async function OPTIONS() {
   return handlePreflight();
 }
 
+// Handle HEAD requests (required for video playback on mobile)
+export async function HEAD(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const imageUrl = searchParams.get('url');
+
+    if (!imageUrl) {
+      return new NextResponse(null, { status: 400 });
+    }
+
+    // Validate URL
+    const isValidS3Url = imageUrl.includes('sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com');
+    const isValidCloudFrontUrl = imageUrl.includes('.cloudfront.net');
+    
+    if (!isValidS3Url && !isValidCloudFrontUrl) {
+      return new NextResponse(null, { status: 400 });
+    }
+
+    // Fetch HEAD from S3
+    const response = await fetch(imageUrl, { method: 'HEAD' });
+    
+    if (!response.ok) {
+      return new NextResponse(null, { status: response.status });
+    }
+
+    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+    const contentLength = response.headers.get('Content-Length');
+    const isVideo = contentType.startsWith('video/');
+
+    // Build response headers
+    const headers: HeadersInit = {
+      'Content-Type': contentType,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS, HEAD',
+      'Access-Control-Allow-Headers': 'Content-Type, Range',
+      'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    };
+
+    if (contentLength) {
+      headers['Content-Length'] = contentLength;
+    }
+
+    if (isVideo) {
+      headers['Accept-Ranges'] = 'bytes';
+    }
+
+    return new NextResponse(null, {
+      status: 200,
+      headers,
+    });
+  } catch (error) {
+    console.error('HEAD request error:', error);
+    return new NextResponse(null, { status: 500 });
+  }
+}
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
@@ -18,6 +75,7 @@ export async function GET(request: NextRequest) {
       imageUrl,
       userAgent: request.headers.get('user-agent'),
       referer: request.headers.get('referer'),
+      range: request.headers.get('range'),
     });
     
     // Log to Sentry for monitoring
@@ -29,6 +87,7 @@ export async function GET(request: NextRequest) {
         imageUrl,
         userAgent: request.headers.get('user-agent'),
         referer: request.headers.get('referer'),
+        hasRange: !!request.headers.get('range'),
       },
     });
 
@@ -65,30 +124,42 @@ export async function GET(request: NextRequest) {
       ));
     }
 
-    // Fetch the image from S3
-    console.log('ImageProxy: Fetching from S3', { imageUrl });
+    // Forward Range header for video streaming (critical for mobile!)
+    const fetchHeaders: HeadersInit = {};
+    const rangeHeader = request.headers.get('range');
+    if (rangeHeader) {
+      fetchHeaders['Range'] = rangeHeader;
+      console.log('ImageProxy: Forwarding Range header', { range: rangeHeader });
+    }
+
+    // Fetch the image/video from S3 with Range support
+    console.log('ImageProxy: Fetching from S3', { imageUrl, hasRange: !!rangeHeader });
     const s3StartTime = Date.now();
-    const response = await fetch(imageUrl);
+    const response = await fetch(imageUrl, { headers: fetchHeaders });
     const s3Duration = Date.now() - s3StartTime;
     
-    if (!response.ok) {
+    if (!response.ok && response.status !== 206) {
       console.error('ImageProxy: S3 fetch failed', {
         imageUrl,
         status: response.status,
         statusText: response.statusText,
         s3Duration,
       });
-      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`);
     }
 
-    // Get the image as a blob
+    // Get the media as a blob
     const blob = await response.blob();
     const totalDuration = Date.now() - startTime;
+    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+    const isVideo = contentType.startsWith('video/');
     
     console.log('ImageProxy: Success', {
       imageUrl,
       blobSize: blob.size,
-      contentType: response.headers.get('Content-Type'),
+      contentType,
+      isVideo,
+      status: response.status,
       s3Duration,
       totalDuration,
     });
@@ -101,27 +172,53 @@ export async function GET(request: NextRequest) {
       data: {
         imageUrl,
         blobSize: blob.size,
-        contentType: response.headers.get('Content-Type'),
+        contentType,
+        isVideo,
+        status: response.status,
         s3Duration,
         totalDuration,
       },
     });
     
-    // Create response with proper CORS headers for images
-    const imageResponse = new NextResponse(blob, {
-      status: 200,
-      headers: {
-        'Content-Type': response.headers.get('Content-Type') || 'image/jpeg',
-        'Content-Length': blob.size.toString(),
-        'Cache-Control': 'public, max-age=31536000, immutable', // Cache for 1 year
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Range',
-        'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
-      },
+    // Build response headers
+    const responseHeaders: HeadersInit = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS, HEAD',
+      'Access-Control-Allow-Headers': 'Content-Type, Range',
+      'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
+    };
+
+    // Add Range-related headers for videos (critical for mobile playback!)
+    if (isVideo) {
+      responseHeaders['Accept-Ranges'] = 'bytes';
+      
+      // If this was a range request, preserve the Content-Range header
+      const contentRange = response.headers.get('Content-Range');
+      if (contentRange) {
+        responseHeaders['Content-Range'] = contentRange;
+      }
+      
+      // Set Content-Length
+      const contentLength = response.headers.get('Content-Length');
+      if (contentLength) {
+        responseHeaders['Content-Length'] = contentLength;
+      } else {
+        responseHeaders['Content-Length'] = blob.size.toString();
+      }
+    } else {
+      responseHeaders['Content-Length'] = blob.size.toString();
+    }
+    
+    // Return with appropriate status (206 for range requests, 200 otherwise)
+    const status = response.status === 206 ? 206 : 200;
+    const mediaResponse = new NextResponse(blob, {
+      status,
+      headers: responseHeaders,
     });
     
-    return imageResponse;
+    return mediaResponse;
   } catch (error) {
     console.error('Image proxy error:', error);
     

@@ -39,12 +39,22 @@ export default function VideoPreview({
   const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   useEffect(() => {
+    console.log('VideoPreview: Initializing video', {
+      mp4Url,
+      posterUrl,
+      showControls,
+      autoPlay,
+      fixedAspect,
+      isMobile: isMobile(),
+      isIOS,
+    });
+    
     setHasError(false);
     setIsLoading(!isMobile());
     setShowFallback(false);
     setPosterVisible(true);
     setIsReady(false);
-  }, [mp4Url]);
+  }, [mp4Url, posterUrl, showControls, autoPlay, fixedAspect, isIOS]);
 
   // Failsafe: if events never fire, hide overlay after a short delay
   useEffect(() => {
@@ -69,13 +79,35 @@ export default function VideoPreview({
     return () => v.removeEventListener("error", onErr);
   }, []);
 
-  const handleVideoError = () => {
-    console.log('VideoPreview: Video failed to load', { mp4Url, posterUrl });
-    logger.warn('Video failed to load', {
+  const handleVideoError = (e?: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e?.currentTarget || videoRef.current;
+    const error = video?.error;
+    
+    console.error('VideoPreview: Video failed to load', { 
+      mp4Url, 
+      posterUrl,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      networkState: video?.networkState,
+      readyState: video?.readyState,
+      currentSrc: video?.currentSrc,
+      isMobile: isMobile(),
+      isIOS,
+    });
+    
+    const errorMessage = error?.message || 'Video load failed';
+    const errorToLog = new Error(`Video error: ${errorMessage}`);
+    
+    logger.error('Video failed to load', errorToLog, {
       component: 'VideoPreview',
       mp4Url: mp4Url,
       hasPoster: !!posterUrl,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      isMobile: isMobile(),
+      isIOS,
     });
+    
     setHasError(true);
     setIsLoading(false);
     setShowFallback(true); // Always show fallback on error
@@ -84,7 +116,18 @@ export default function VideoPreview({
     onError?.();
   };
 
-  const handleLoadedMetadata = () => {
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    console.log('VideoPreview: Metadata loaded', {
+      mp4Url,
+      duration: video.duration,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight,
+      readyState: video.readyState,
+      isMobile: isMobile(),
+      isIOS,
+    });
+    
     setIsReady(true);
     setPosterVisible(false);
   };
@@ -102,13 +145,13 @@ export default function VideoPreview({
     onLoad?.();
   };
 
-  const containerClass = fixedAspect ? `relative aspect-video ${className}` : `relative ${className}`;
+  const containerClass = fixedAspect ? `relative aspect-video ${className}` : `relative w-full h-full ${className}`;
   const videoClass = fixedAspect 
     ? "w-full h-auto object-cover" 
     : "w-full h-full object-contain";
 
   return (
-    <div className={containerClass}>
+    <div className={containerClass} style={!fixedAspect ? { maxHeight: '100%', display: 'flex', alignItems: 'center' } : undefined}>
       {hasError && posterUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -122,17 +165,24 @@ export default function VideoPreview({
         <video
           ref={videoRef}
           playsInline
-          {...({ 'webkit-playsinline': 'true' } as Record<string, string>)}
+          {...({ 
+            'webkit-playsinline': 'true',
+            'x-webkit-airplay': 'allow',
+          } as Record<string, string>)}
           muted={!showControls}
           loop={!showControls}
           autoPlay={autoPlay}
-          preload="metadata"
+          preload={showControls ? "auto" : "metadata"}
           poster={posterUrl ? apiServices.imageProxy.getProxiedImageUrl(posterUrl) : undefined}
-          disableRemotePlayback
+          disableRemotePlayback={false}
           controls={showControls}
+          controlsList="nodownload"
           className={videoClass}
-          style={!fixedAspect ? { maxHeight: '100%' } : undefined}
-          onLoadStart={() => setIsLoading(true)}
+          style={!fixedAspect ? { maxHeight: '100%', maxWidth: '100%' } : undefined}
+          onLoadStart={() => {
+            console.log('VideoPreview: Load started', { mp4Url });
+            setIsLoading(true);
+          }}
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handleVideoError}
