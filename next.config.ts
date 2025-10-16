@@ -23,9 +23,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com',
         port: '',
-        pathname: '/henna-uploads/**',
+        pathname: '/**', // Support all paths (henna-uploads/, henna-sapir-idan/, etc.)
       },
-      // CloudFront domain will be added dynamically based on environment variable
+      // CloudFront domain - production CDN for better performance
+      {
+        protocol: 'https',
+        hostname: 'd1iqpun8bxb9yi.cloudfront.net',
+        port: '',
+        pathname: '/**', // Support all paths for backwards compatibility
+      },
+      // Fallback: CloudFront domain from environment variable
       ...(process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN ? [{
         protocol: 'https' as const,
         hostname: process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN,

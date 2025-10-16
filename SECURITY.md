@@ -13,8 +13,8 @@ AWS_ACCESS_KEY_ID=your_aws_access_key_here
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key_here
 S3_BUCKET_NAME=sapir-and-idan-henna-albums
 
-# CloudFront Configuration (Optional - for better performance)
-NEXT_PUBLIC_CLOUDFRONT_DOMAIN=your-cloudfront-domain.cloudfront.net
+# CloudFront Configuration (Required for mobile video playback)
+NEXT_PUBLIC_CLOUDFRONT_DOMAIN=d1iqpun8bxb9yi.cloudfront.net
 
 # Redis Configuration (Optional - for server-side caching)
 REDIS_URL=redis://localhost:6379
@@ -67,9 +67,10 @@ SENTRY_PROJECT=henna-idan-sapir
 - CORS headers properly set
 
 ✅ **CloudFront Integration**
-- Dynamic domain configuration
-- Automatic fallback to S3
-- Proper image optimization
+- Dynamic domain configuration: d1iqpun8bxb9yi.cloudfront.net
+- Automatic fallback to S3 (not recommended for production)
+- Proper image and video optimization
+- Required for mobile video streaming
 
 ✅ **Redis Caching (Optional)**
 - Server-side caching for better performance
@@ -78,9 +79,20 @@ SENTRY_PROJECT=henna-idan-sapir
 
 ## 📝 Notes
 
-- The app works without CloudFront (uses S3 directly)
+- **CloudFront is REQUIRED for production** - Videos won't load properly on mobile without it
 - The app works without Redis (client-side cache still active)
 - For production, Redis is highly recommended for best performance
 - See [CACHING.md](./CACHING.md) for detailed caching documentation
-- CloudFront improves performance but is optional
 - All sensitive data is properly externalized
+- Current CloudFront domain: d1iqpun8bxb9yi.cloudfront.net
+
+## 🎥 Video Playback Architecture
+
+The app uses CloudFront CDN for efficient video streaming:
+1. Videos uploaded to `henna-uploads/` (existing production structure)
+2. CloudFront serves videos with Range request support for mobile
+3. Proxy route streams video data directly (no buffering)
+4. Mobile devices can seek and stream videos efficiently
+
+**Note:** Lambda processing (`henna-sapir-idan/raw/` → `processed/`) is optional
+and can be added in the future without affecting existing files.

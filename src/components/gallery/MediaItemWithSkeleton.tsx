@@ -169,6 +169,9 @@ export default function MediaItemWithSkeleton({ item, index, onMediaClick }: Med
                       mp4Url={item.media_url}
                       posterUrl={item.thumbnail_url || undefined}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      fixedAspect={false}
+                      showControls={false}
+                      autoPlay={true}
                       onLoad={handleMediaLoad}
                       onError={() => {
                         console.debug('Video failed to load in MediaGrid for item:', item.id);

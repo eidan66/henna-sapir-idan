@@ -47,6 +47,8 @@ export const generateUploadUrl = async (
   // Generate unique filename
   const extension = filename.split('.').pop();
   const uniqueFilename = `${uuidv4()}.${extension}`;
+  // Keep using the existing structure to avoid breaking production
+  // Hundreds of existing files use this path
   const key = `henna-uploads/${uniqueFilename}`;
 
   // Prepare metadata for S3 object
@@ -78,16 +80,19 @@ export const generateUploadUrl = async (
 const videoExtensions = ['mp4', 'mov', 'webm', 'quicktime', 'hevc', '3gpp', 'x-matroska','video'];
 
 export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
-  const command = new ListObjectsV2Command({
+  // BACKWARDS COMPATIBLE: Support both old structure (henna-uploads/) and new (processed/)
+  // This ensures hundreds of existing files in production continue to work
+  
+  // List existing files from henna-uploads/ (production files)
+  const oldCommand = new ListObjectsV2Command({
     Bucket: process.env.S3_BUCKET_NAME,
     Prefix: 'henna-uploads/',
   });
 
-  const response = await s3Client.send(command);
+  const oldResponse = await s3Client.send(oldCommand);
+  const oldContents = (oldResponse.Contents ?? []).filter(obj => !!obj.Key && !obj.Key!.endsWith('/'));
 
-  const contents = (response.Contents ?? []).filter(obj => !!obj.Key && !obj.Key!.endsWith('/'));
-
-  const sorted = contents.sort((a, b) => {
+  const sorted = oldContents.sort((a, b) => {
     const aTime = a.LastModified?.getTime() ?? 0;
     const bTime = b.LastModified?.getTime() ?? 0;
     return bTime - aTime;
@@ -95,10 +100,10 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
 
   const items: AlbumItem[] = [];
 
-  // Fetch metadata for each item concurrently (best-effort)
+  // Process existing files (old structure)
   await Promise.all(sorted.map(async (item) => {
     const key = item.Key as string;
-    const url = getCloudFrontUrl(key); // Use CloudFront URL for better performance
+    const url = getCloudFrontUrl(key);
     const id = key;
     const ext = id.split('.').pop()?.toLowerCase() ?? '';
 
@@ -113,7 +118,6 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
       });
       const headResponse = await s3Client.send(headCommand);
       if (headResponse.Metadata) {
-        // Decode URI components as they were encoded when uploaded
         itemMetadata = Object.fromEntries(
           Object.entries(headResponse.Metadata).map(([k, v]) => [
             k, decodeURIComponent(v as string)
@@ -121,14 +125,12 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
         );
       }
     } catch (headError) {
-      // Non-fatal: continue without head metadata
       console.warn(`Metadata fetch failed for ${key}:`, headError);
     }
 
     const createdIso = itemMetadata.created_date || item.LastModified?.toISOString() || new Date(0).toISOString();
 
-    // For videos, don't set thumbnail_url to avoid conflicts with video loading
-    // The browser will handle the first frame as poster automatically
+    // For videos in old structure, no thumbnail - browser will handle first frame
     const thumbnail_url = undefined;
 
     items.push({
@@ -142,6 +144,9 @@ export const listUploadedFiles = async (): Promise<AlbumItem[]> => {
     });
   }));
 
-  // Sort items by created_date after fetching metadata (to ensure proper sorting)
+  // TODO: In the future, also list from henna-sapir-idan/processed/ for Lambda-processed files
+  // This will be added when Lambda processing is enabled without breaking existing files
+
+  // Sort items by created_date
   return items.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime());
 };

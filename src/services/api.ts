@@ -294,28 +294,28 @@ export class ImageProxyService {
       return originalUrl;
     }
     
-    // If it's a CloudFront URL, return as is (no proxy needed)
-    if (originalUrl.includes('.cloudfront.net')) {
-      return originalUrl;
-    }
-    
-    // If it's an S3 URL, use our proxy
-    if (originalUrl.includes('sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com')) {
+    // CRITICAL FIX: Always use proxy for S3/CloudFront URLs
+    // This ensures proper authentication and Range request support
+    // CloudFront may return 403 if not configured with proper Origin Access
+    if (originalUrl.includes('.cloudfront.net') || 
+        originalUrl.includes('sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com')) {
       const proxiedUrl = `${API_BASE}/proxy/image?url=${encodeURIComponent(originalUrl)}`;
-      console.log('ImageProxyService: Converting S3 URL to proxy', { 
+      console.log('ImageProxyService: Proxying URL for proper auth and streaming', { 
         originalUrl, 
         proxiedUrl,
-        isS3: true 
+        isCloudFront: originalUrl.includes('.cloudfront.net'),
+        isS3: originalUrl.includes('s3.il-central-1.amazonaws.com')
       });
       
       Sentry.addBreadcrumb({
-        message: 'ImageProxyService: Converting S3 URL to proxy',
+        message: 'ImageProxyService: Proxying URL for proper auth and streaming',
         category: 'image-proxy',
         level: 'info',
         data: { 
           originalUrl, 
           proxiedUrl,
-          isS3: true 
+          isCloudFront: originalUrl.includes('.cloudfront.net'),
+          isS3: originalUrl.includes('s3.il-central-1.amazonaws.com')
         },
       });
       
@@ -323,10 +323,10 @@ export class ImageProxyService {
     }
     
     // For other URLs, return as is
-    console.log('ImageProxyService: Non-S3/CloudFront URL, returning as-is', { originalUrl });
+    console.log('ImageProxyService: External URL, returning as-is', { originalUrl });
     
     Sentry.addBreadcrumb({
-      message: 'ImageProxyService: Non-S3/CloudFront URL, returning as-is',
+      message: 'ImageProxyService: External URL, returning as-is',
       category: 'image-proxy',
       level: 'info',
       data: { originalUrl },

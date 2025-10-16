@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
       userAgent: request.headers.get('user-agent'),
       referer: request.headers.get('referer'),
       range: request.headers.get('range'),
+      fullUrl: request.url,
     });
     
     // Log to Sentry for monitoring
@@ -132,10 +133,28 @@ export async function GET(request: NextRequest) {
       console.log('ImageProxy: Forwarding Range header', { range: rangeHeader });
     }
 
-    // Fetch the image/video from S3 with Range support
-    console.log('ImageProxy: Fetching from S3', { imageUrl, hasRange: !!rangeHeader });
+    // TEMPORARY FIX: Always use S3 directly until CloudFront is properly configured
+    // CloudFront is returning 403 Forbidden - needs proper Origin Access Control setup
+    let response: Response;
     const s3StartTime = Date.now();
-    const response = await fetch(imageUrl, { headers: fetchHeaders });
+    
+    if (isValidCloudFrontUrl) {
+      console.log('ImageProxy: CloudFront URL detected, converting to S3 direct', { imageUrl });
+      
+      // Extract S3 key from CloudFront URL
+      // https://d1iqpun8bxb9yi.cloudfront.net/henna-uploads/file.jpg → henna-uploads/file.jpg
+      const urlParts = new URL(imageUrl);
+      const s3Key = urlParts.pathname.substring(1); // Remove leading /
+      const s3Url = `https://sapir-and-idan-henna-albums.s3.il-central-1.amazonaws.com/${s3Key}`;
+      
+      console.log('ImageProxy: Fetching from S3 (CloudFront fallback)', { s3Url, originalCloudFrontUrl: imageUrl });
+      response = await fetch(s3Url, { headers: fetchHeaders });
+    } else {
+      // Direct S3 URL
+      console.log('ImageProxy: Fetching from S3', { imageUrl, hasRange: !!rangeHeader });
+      response = await fetch(imageUrl, { headers: fetchHeaders });
+    }
+    
     const s3Duration = Date.now() - s3StartTime;
     
     if (!response.ok && response.status !== 206) {
@@ -148,35 +167,37 @@ export async function GET(request: NextRequest) {
       throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`);
     }
 
-    // Get the media as a blob
-    const blob = await response.blob();
-    const totalDuration = Date.now() - startTime;
+    // Get content type to determine if it's a video
     const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
     const isVideo = contentType.startsWith('video/');
     
-    console.log('ImageProxy: Success', {
+    // CRITICAL FIX: Stream the response directly instead of buffering to memory
+    // This enables true video streaming on mobile devices
+    const totalDuration = Date.now() - startTime;
+    
+    console.log('ImageProxy: Streaming response', {
       imageUrl,
-      blobSize: blob.size,
       contentType,
       isVideo,
       status: response.status,
       s3Duration,
       totalDuration,
+      hasRangeRequest: !!rangeHeader,
     });
     
     // Log success to Sentry
     Sentry.addBreadcrumb({
-      message: 'ImageProxy: Success',
+      message: 'ImageProxy: Streaming response',
       category: 'image-proxy',
       level: 'info',
       data: {
         imageUrl,
-        blobSize: blob.size,
         contentType,
         isVideo,
         status: response.status,
         s3Duration,
         totalDuration,
+        hasRangeRequest: !!rangeHeader,
       },
     });
     
@@ -190,6 +211,12 @@ export async function GET(request: NextRequest) {
       'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
     };
 
+    // Forward critical headers from S3 response
+    const contentLength = response.headers.get('Content-Length');
+    if (contentLength) {
+      responseHeaders['Content-Length'] = contentLength;
+    }
+
     // Add Range-related headers for videos (critical for mobile playback!)
     if (isVideo) {
       responseHeaders['Accept-Ranges'] = 'bytes';
@@ -199,21 +226,14 @@ export async function GET(request: NextRequest) {
       if (contentRange) {
         responseHeaders['Content-Range'] = contentRange;
       }
-      
-      // Set Content-Length
-      const contentLength = response.headers.get('Content-Length');
-      if (contentLength) {
-        responseHeaders['Content-Length'] = contentLength;
-      } else {
-        responseHeaders['Content-Length'] = blob.size.toString();
-      }
-    } else {
-      responseHeaders['Content-Length'] = blob.size.toString();
     }
     
-    // Return with appropriate status (206 for range requests, 200 otherwise)
+    // Return stream directly without buffering (206 for range requests, 200 otherwise)
     const status = response.status === 206 ? 206 : 200;
-    const mediaResponse = new NextResponse(blob, {
+    
+    // Stream the body directly from S3 to the client
+    // This is crucial for mobile video playback with Range requests
+    const mediaResponse = new NextResponse(response.body, {
       status,
       headers: responseHeaders,
     });

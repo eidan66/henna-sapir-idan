@@ -32,6 +32,7 @@ export default function VideoPreview({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const [mobileVideoFailed, setMobileVideoFailed] = useState(false);
   const [posterVisible, setPosterVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -50,20 +51,24 @@ export default function VideoPreview({
     });
     
     setHasError(false);
-    setIsLoading(!isMobile());
+    setIsLoading(false);
     setShowFallback(false);
-    setPosterVisible(true);
+    // Don't show poster overlay if no posterUrl - let video show first frame
+    setPosterVisible(!!posterUrl);
     setIsReady(false);
   }, [mp4Url, posterUrl, showControls, autoPlay, fixedAspect, isIOS]);
 
   // Failsafe: if events never fire, hide overlay after a short delay
   useEffect(() => {
     if (isReady) return;
+    // If no poster URL, make video ready immediately to show first frame
+    const timeout = posterUrl ? 1000 : 100;
     const t = setTimeout(() => {
-      console.log('VideoPreview: Failsafe timeout - hiding overlay', { mp4Url, posterUrl });
+      console.log('VideoPreview: Failsafe timeout - hiding overlay', { mp4Url, posterUrl, timeout });
+      setIsLoading(false);
       setIsReady(true);
       setPosterVisible(false);
-    }, 5000); // Increased timeout to 5 seconds
+    }, timeout);
     return () => clearTimeout(t);
   }, [isReady, mp4Url, posterUrl]);
 
@@ -110,8 +115,17 @@ export default function VideoPreview({
     
     setHasError(true);
     setIsLoading(false);
-    setShowFallback(true); // Always show fallback on error
-    setPosterVisible(false);
+    
+    // In mobile, show poster image instead of fallback
+    if (isMobile()) {
+      setMobileVideoFailed(true);
+      setShowFallback(false);
+      setPosterVisible(true);
+    } else {
+      setShowFallback(true);
+      setPosterVisible(false);
+    }
+    
     setIsReady(true); // Mark as ready so overlay disappears
     onError?.();
   };
@@ -128,6 +142,7 @@ export default function VideoPreview({
       isIOS,
     });
     
+    setIsLoading(false);
     setIsReady(true);
     setPosterVisible(false);
   };
@@ -161,7 +176,7 @@ export default function VideoPreview({
         />
       )}
 
-      {!showFallback && (
+      {!showFallback && !mobileVideoFailed && (
         <video
           ref={videoRef}
           playsInline
@@ -169,10 +184,10 @@ export default function VideoPreview({
             'webkit-playsinline': 'true',
             'x-webkit-airplay': 'allow',
           } as Record<string, string>)}
-          muted={!showControls}
+          muted={true}
           loop={!showControls}
           autoPlay={autoPlay}
-          preload={showControls ? "auto" : "metadata"}
+          preload={posterUrl ? "none" : "metadata"}
           poster={posterUrl ? apiServices.imageProxy.getProxiedImageUrl(posterUrl) : undefined}
           disableRemotePlayback={false}
           controls={showControls}
@@ -180,21 +195,56 @@ export default function VideoPreview({
           className={videoClass}
           style={!fixedAspect ? { maxHeight: '100%', maxWidth: '100%' } : undefined}
           onLoadStart={() => {
-            console.log('VideoPreview: Load started', { mp4Url });
+            console.log('VideoPreview: Load started', { mp4Url, proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(mp4Url) });
             setIsLoading(true);
+          }}
+          onLoadedData={() => {
+            console.log('VideoPreview: Data loaded', { mp4Url, proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(mp4Url) });
+            setIsLoading(false);
+            setIsReady(true);
+            setPosterVisible(false);
           }}
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onError={handleVideoError}
+          onProgress={() => {
+            console.log('VideoPreview: Progress', { mp4Url, proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(mp4Url) });
+          }}
+          onSuspend={() => {
+            console.log('VideoPreview: Suspend', { mp4Url, proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(mp4Url) });
+          }}
+          onStalled={() => {
+            console.log('VideoPreview: Stalled', { mp4Url, proxiedUrl: apiServices.imageProxy.getProxiedImageUrl(mp4Url) });
+          }}
         >
           {!isIOS && webmUrl && <source src={apiServices.imageProxy.getProxiedImageUrl(webmUrl)} type="video/webm" />}
-          <source src={apiServices.imageProxy.getProxiedImageUrl(mp4Url)} type="video/mp4" />
+          <source 
+            src={apiServices.imageProxy.getProxiedImageUrl(mp4Url)} 
+            type="video/mp4"
+          />
         </video>
       )}
 
-      {isLoading && !showFallback && (
+      {isLoading && !showFallback && !mobileVideoFailed && (
         <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {/* Mobile video fallback - show play button */}
+      {isMobile() && mobileVideoFailed && posterUrl && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+          <button
+            onClick={() => {
+              console.log('VideoPreview: Retrying video load on mobile', { mp4Url });
+              setMobileVideoFailed(false);
+              setHasError(false);
+              setIsLoading(true);
+            }}
+            className="w-16 h-16 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-300"
+          >
+            <div className="w-0 h-0 border-l-[12px] border-l-emerald-600 border-y-[8px] border-y-transparent ml-1"></div>
+          </button>
         </div>
       )}
 
@@ -202,10 +252,13 @@ export default function VideoPreview({
         <VideoPlaceholder className="w-full h-full" />
       )}
 
-      {(!showFallback && !hasError && (posterVisible || (!isReady && !isLoading))) && (
-        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-          <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-            <Play className="w-8 h-8 text-emerald-600 ml-1" />
+      {(!showFallback && !hasError && !mobileVideoFailed && !posterUrl && (posterVisible || (!isReady && !isLoading))) && (
+        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/30 flex flex-col items-center justify-center gap-3">
+          <div className="w-14 h-14 bg-white/90 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110">
+            <Play className="w-7 h-7 text-emerald-600 ml-0.5" />
+          </div>
+          <div className="text-white text-xs font-medium px-4 py-1.5 bg-black/30 rounded-full backdrop-blur-sm shadow-md">
+            לחץ לצפייה
           </div>
         </div>
       )}

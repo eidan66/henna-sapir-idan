@@ -2,15 +2,16 @@
 export const CLOUDFRONT_DOMAIN = process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN || ''; // Must be set via environment variable
 
 export const getCloudFrontUrl = (s3Key: string): string => {
-  // If CloudFront domain is not configured, fall back to S3
-  if (!CLOUDFRONT_DOMAIN) {
-    console.warn('CloudFront domain not configured, falling back to S3');
-    return getS3Url(s3Key);
+  // Priority: Try CloudFront first (fastest), then fall back to S3
+  // Note: The proxy route will handle authentication for both
+  if (CLOUDFRONT_DOMAIN) {
+    // CloudFront URL - will be proxied through our API for proper auth
+    return `https://${CLOUDFRONT_DOMAIN}/${s3Key}`;
   }
   
-  // Remove the bucket path prefix if it exists
-  const cleanKey = s3Key.replace('henna-uploads/', '');
-  return `https://${CLOUDFRONT_DOMAIN}/${cleanKey}`;
+  // Fallback to direct S3 URL
+  console.warn('CloudFront domain not configured, using S3 direct URL');
+  return getS3Url(s3Key);
 };
 
 export const getS3Url = (s3Key: string): string => {
