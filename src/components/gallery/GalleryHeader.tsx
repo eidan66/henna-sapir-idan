@@ -67,21 +67,6 @@ export default function GalleryHeader({ mediaCount }: GalleryHeaderProps) {
           </div>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-sm text-gray-500 dark:text-gray-400 px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-r from-gold-100 to-emerald-100 dark:from-gold-900/20 dark:to-emerald-900/20 rounded-full flex items-center justify-center">
-              <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <span className="font-medium text-sm sm:text-base">{mediaCount} זכרונות שותפו</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-r from-emerald-100 to-gold-100 dark:from-gold-900/20 dark:to-emerald-900/20 rounded-full flex items-center justify-center">
-              <Users className="w-5 h-5 text-gold-400 dark:text-gold-400" />
-            </div>
-            <span className="font-medium text-sm sm:text-base">על ידי האהובים שלנו</span>
-          </div>
-        </div>
-
         {/* Hidden Download Button - Only visible after 25 hours */}
         {showDownloadButton && (
           <motion.div

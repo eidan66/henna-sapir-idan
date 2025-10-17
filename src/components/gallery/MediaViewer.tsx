@@ -152,25 +152,25 @@ export default function MediaViewer({
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
                 onClick={(e) => {
                   e.stopPropagation();
                   onNavigate('prev');
                 }}
               >
-                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               </Button>
               
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
                 onClick={(e) => {
                   e.stopPropagation();
                   onNavigate('next');
                 }}
               >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               </Button>
             </>
           )}
@@ -179,29 +179,29 @@ export default function MediaViewer({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 sm:top-4 left-2 sm:left-4 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+            className="absolute top-2 sm:top-4 left-2 sm:left-4 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
             onClick={onClose}
           >
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </Button>
 
           {/* Download Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 sm:top-4 left-14 sm:left-20 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
+            className="absolute top-2 sm:top-4 left-12 sm:left-16 md:left-20 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm z-20"
             onClick={(e) => {
               e.stopPropagation();
               handleDownload();
             }}
             disabled={isDownloading}
           >
-            <Download className={`w-5 h-5 sm:w-6 sm:h-6 ${isDownloading ? 'animate-spin' : ''}`} />
+            <Download className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${isDownloading ? 'animate-spin' : ''}`} />
           </Button>
 
           {/* Counter */}
           {totalCount > 1 && (
-            <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 text-white text-xs sm:text-sm font-medium z-20">
+            <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-2.5 py-1 sm:px-3 sm:py-1.5 md:px-4 md:py-2 text-white text-[10px] sm:text-xs md:text-sm font-medium z-20">
               {currentIndex + 1} מתוך {totalCount}
             </div>
           )}

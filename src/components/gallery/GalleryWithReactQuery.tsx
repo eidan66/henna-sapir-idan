@@ -101,6 +101,22 @@ export default function GalleryWithReactQuery() {
       <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 py-6 sm:py-8 pb-24 md:pb-8">
         <GalleryHeader mediaCount={totalCount} />
 
+        {/* Upload Button - Prominent and Always Visible */}
+        <div className="mb-6 sm:mb-8">
+          <Link href={createPageUrl("Upload")}>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full sm:w-auto"
+            >
+              <Button className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 group text-base sm:text-lg font-semibold py-4 sm:py-3 px-6 sm:px-8">
+                <Plus className="w-5 h-5 sm:w-4 sm:h-4 ml-2 group-hover:rotate-90 transition-transform duration-300" />
+                שתפו את הזיכרון שלכם
+              </Button>
+            </motion.div>
+          </Link>
+        </div>
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <FilterTabs 
             media={media}
@@ -109,8 +125,9 @@ export default function GalleryWithReactQuery() {
             totalVideos={videoCount}
           />
           
+          {/* Hidden on mobile since we have the prominent button above */}
           <Link href={createPageUrl("Upload")}>
-            <Button className="hidden sm:inline-flex bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 group">
+            <Button className="hidden lg:inline-flex bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 group">
               <Plus className="w-4 h-4 ml-2 group-hover:rotate-90 transition-transform duration-300" />
               שתפו את הזיכרון שלכם
             </Button>
